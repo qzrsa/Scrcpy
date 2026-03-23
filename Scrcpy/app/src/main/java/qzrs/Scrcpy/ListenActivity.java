@@ -39,7 +39,6 @@ public class ListenActivity extends Activity {
     private ActivityListenBinding binding;
     
     private static final int DEFAULT_PORT = 25166;
-    private static final String SERVER_FILENAME = "scrcpy_server.jar";
     
     private ServerSocket serverSocket;
     private boolean isListening = false;
@@ -63,9 +62,6 @@ public class ListenActivity extends Activity {
         
         // 设置按钮监听
         setButtonListener();
-        
-        // 自动开始监听
-        startListening();
     }
     
     /**
@@ -146,7 +142,7 @@ public class ListenActivity extends Activity {
         
         isListening = true;
         binding.statusText.setText("等待控制端连接...");
-        binding.startButton.setText("停止");
+        binding.startButtonText.setText("停止");
         binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
         
         // 更新日志
@@ -158,7 +154,8 @@ public class ListenActivity extends Activity {
                 serverSocket.setReuseAddress(true);
                 
                 mainHandler.post(() -> {
-                    binding.statusText.setText("等待控制端连接...\nIP: " + binding.ipAddress.getText().toString().split("\n")[0] + ":" + listeningPort);
+                    String ip = binding.ipAddress.getText().toString().split("\n")[0].trim();
+                    binding.statusText.setText("等待控制端连接...\nIP: " + ip + ":" + listeningPort);
                 });
                 
                 LogHelper.i("ListenActivity", "ServerSocket 已启动，监听端口: " + listeningPort);
@@ -182,7 +179,7 @@ public class ListenActivity extends Activity {
                     mainHandler.post(() -> {
                         binding.statusText.setText("监听失败: " + e.getMessage());
                         binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
-                        binding.startButton.setText("启动");
+                        binding.startButtonText.setText("启动");
                     });
                 }
             }
@@ -196,15 +193,12 @@ public class ListenActivity extends Activity {
         try {
             mainHandler.post(() -> {
                 // 显示连接成功
-                ItemLoadingBinding loading = ViewTools.createLoading(this);
+                Pair<ItemLoadingBinding, Dialog> loading = ViewTools.createLoading(this);
                 loading.second.show();
                 binding.statusText.setText("连接成功！正在启动服务...");
             });
             
             // 这里可以添加启动 scrcpy server 的逻辑
-            // 由于没有 ADB，我们需要另一种方式启动服务
-            
-            // 暂时先显示成功，实际启动需要更复杂的实现
             mainHandler.post(() -> {
                 Toast.makeText(this, "连接成功！P2P 模式即将推出...", Toast.LENGTH_LONG).show();
                 binding.statusText.setText("连接成功！\n请等待后续功能...");
@@ -236,7 +230,7 @@ public class ListenActivity extends Activity {
         }
         
         binding.statusText.setText("已停止监听");
-        binding.startButton.setText("启动");
+        binding.startButtonText.setText("启动");
         binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
         
         LogHelper.i("ListenActivity", "停止监听");
