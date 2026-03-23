@@ -97,7 +97,7 @@ public final class Server {
     // 3
     Class<?> inputManagerClass;
     try {
-      inputManagerClass = Class.forName("android.hardware.input.InputManager");
+      inputManagerClass = Class.forName("android.hardware.input.InputManagerGlobal");
     } catch (ClassNotFoundException e) {
       inputManagerClass = android.hardware.input.InputManager.class;
     }
@@ -125,6 +125,8 @@ public final class Server {
       mainOutputStream = mainSocket.getOutputStream();
       videoOutputStream = videoSocket.getOutputStream();
       mainInputStream = new DataInputStream(mainSocket.getInputStream());
+      // 关闭TCP的Nagle算法，避免小包缓冲
+      mainSocket.setTcpNoDelay(true);
     }
   }
 
@@ -180,6 +182,8 @@ public final class Server {
             lastKeepAliveTime = System.currentTimeMillis();
             // 收到心跳包，原样返回，用于客户端计算RTT往返延迟
             mainOutputStream.write(new byte[]{4});
+            // 强制flush，立刻发送，避免TCP缓冲
+            mainOutputStream.flush();
             break;
           case 5:
             Device.changeResolution(mainInputStream.readFloat());
