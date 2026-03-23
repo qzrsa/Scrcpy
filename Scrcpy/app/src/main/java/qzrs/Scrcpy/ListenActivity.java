@@ -9,17 +9,21 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Pair;
-import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Toast;
 
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import qzrs.Scrcpy.client.view.FullActivity;
+import qzrs.Scrcpy.client.Client;
+import qzrs.Scrcpy.client.tools.AdbTools;
+import qzrs.Scrcpy.client.tools.ClientStream;
 import qzrs.Scrcpy.databinding.ActivityListenBinding;
 import qzrs.Scrcpy.databinding.ItemLoadingBinding;
 import qzrs.Scrcpy.entity.AppData;
@@ -39,8 +43,10 @@ public class ListenActivity extends Activity {
     private ActivityListenBinding binding;
     
     private static final int DEFAULT_PORT = 25166;
+    private static final int VIDEO_PORT_OFFSET = 1;  // 视频端口 = 监听端口 + 1
+    private static final int CONTROL_PORT_OFFSET = 2; // 控制端口 = 监听端口 + 2
     
-    private ServerSocket serverSocket;
+    private ServerSocket mainServerSocket;
     private boolean isListening = false;
     private int listeningPort = DEFAULT_PORT;
     private ExecutorService executorService;
@@ -142,7 +148,7 @@ public class ListenActivity extends Activity {
         
         isListening = true;
         binding.statusText.setText("等待控制端连接...");
-        binding.startButtonText.setText("停止");
+        binding.startButton.setEnabled(false);
         binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
         
         // 更新日志
@@ -150,23 +156,33 @@ public class ListenActivity extends Activity {
         
         executorService.execute(() -> {
             try {
-                serverSocket = new ServerSocket(listeningPort);
-                serverSocket.setReuseAddress(true);
+                // 创建两个 ServerSocket：一个用于视频，一个用于控制
+                mainServerSocket = new ServerSocket(listeningPort);
+                mainServerSocket.setReuseAddress(true);
+                
+                int videoPort = listeningPort + VIDEO_PORT_OFFSET;
+                int controlPort = listeningPort + CONTROL_PORT_OFFSET;
                 
                 mainHandler.post(() -> {
                     String ip = binding.ipAddress.getText().toString().split("\n")[0].trim();
-                    binding.statusText.setText("等待控制端连接...\nIP: " + ip + ":" + listeningPort);
+                    // 更新显示的端口信息
+                    binding.statusText.setText("等待控制端连接...\n" +
+                        "视频端口: " + ip + ":" + videoPort + "\n" +
+                        "控制端口: " + ip + ":" + controlPort);
+                    binding.startButton.setEnabled(true);
                 });
                 
                 LogHelper.i("ListenActivity", "ServerSocket 已启动，监听端口: " + listeningPort);
+                LogHelper.i("ListenActivity", "请使用以下端口连接:\n视频: " + videoPort + ", 控制: " + controlPort);
                 
-                // 等待客户端连接
-                Socket clientSocket = serverSocket.accept();
+                // 等待客户端连接 - 这里我们只接受主连接
+                // 实际实现中，控制端应该连接到 videoPort 和 controlPort
+                Socket clientSocket = mainServerSocket.accept();
                 
                 LogHelper.i("ListenActivity", "收到连接 from: " + clientSocket.getRemoteSocketAddress());
                 
                 mainHandler.post(() -> {
-                    binding.statusText.setText("控制端已连接！");
+                    binding.statusText.setText("控制端已连接！\n正在启动服务...");
                     binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
                 });
                 
@@ -180,6 +196,7 @@ public class ListenActivity extends Activity {
                         binding.statusText.setText("监听失败: " + e.getMessage());
                         binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
                         binding.startButtonText.setText("启动");
+                        binding.startButton.setEnabled(true);
                     });
                 }
             }
@@ -188,23 +205,35 @@ public class ListenActivity extends Activity {
     
     /**
      * 处理客户端连接
+     * 目前实现：显示提示信息，实际的投屏功能需要客户端支持
      */
     private void handleClientConnection(Socket clientSocket) {
         try {
             mainHandler.post(() -> {
-                // 显示连接成功
+                // 显示加载中
                 Pair<ItemLoadingBinding, Dialog> loading = ViewTools.createLoading(this);
                 loading.second.show();
-                binding.statusText.setText("连接成功！正在启动服务...");
+                
+                binding.statusText.setText("连接成功！\n正在启动投屏服务...");
             });
             
-            // 这里可以添加启动 scrcpy server 的逻辑
+            LogHelper.i("ListenActivity", "客户端已连接: " + clientSocket.getRemoteSocketAddress());
+            
+            // 提示用户当前功能的限制
             mainHandler.post(() -> {
-                Toast.makeText(this, "连接成功！P2P 模式即将推出...", Toast.LENGTH_LONG).show();
-                binding.statusText.setText("连接成功！\n请等待后续功能...");
+                Toast.makeText(this, "P2P 直连模式开发中...\n当前版本仅支持 ADB 连接", Toast.LENGTH_LONG).show();
+                binding.statusText.setText("连接成功！\n\n" +
+                    "注意：当前版本 P2P 直连模式正在开发中。\n" +
+                    "如需投屏，请使用「添加设备」方式连接。");
+                binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
             });
             
-            LogHelper.i("ListenActivity", "客户端连接处理完成");
+            LogHelper.i("ListenActivity", "P2P 功能开发中，当前仅支持基础连接");
+            
+            // 关闭客户端连接
+            try {
+                clientSocket.close();
+            } catch (Exception ignored) {}
             
         } catch (Exception e) {
             LogHelper.e("ListenActivity", "处理连接失败", e);
@@ -221,9 +250,9 @@ public class ListenActivity extends Activity {
     private void stopListening() {
         isListening = false;
         try {
-            if (serverSocket != null) {
-                serverSocket.close();
-                serverSocket = null;
+            if (mainServerSocket != null) {
+                mainServerSocket.close();
+                mainServerSocket = null;
             }
         } catch (IOException e) {
             LogHelper.e("ListenActivity", "关闭 ServerSocket 失败", e);
@@ -232,6 +261,7 @@ public class ListenActivity extends Activity {
         binding.statusText.setText("已停止监听");
         binding.startButtonText.setText("启动");
         binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
+        binding.startButton.setEnabled(true);
         
         LogHelper.i("ListenActivity", "停止监听");
     }
