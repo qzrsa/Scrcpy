@@ -172,7 +172,7 @@ public class ClientStream {
       videoDataInputStream.readFully(buffer);
       return ByteBuffer.wrap(buffer);
     }
-    return videoBufferStream.readByteArrayFromVideo(size);
+    return videoBufferStream.readByteArray(size);
   }
 
   public ByteBuffer readFrameFromMain() throws Exception {
