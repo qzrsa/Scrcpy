@@ -1,6 +1,7 @@
 package qzrs.Scrcpy.helper;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
@@ -21,6 +22,10 @@ import java.util.Locale;
  * - 每次启动创建1个日志文件
  * - 日志最多保存5个
  * - 自动清理多余的旧日志
+ * 
+ * 日志路径（按优先级）：
+ * 1. 内部存储: /data/data/qzrs.Scrcpy/files/logs
+ * 2. 外部存储: /storage/emulated/0/Android/data/qzrs.Scrcpy/files/logs
  */
 public class LogHelper {
     private static final String TAG = "Scrcpy";
@@ -33,32 +38,95 @@ public class LogHelper {
     
     private static File logFile;
     private static File logDir;
+    private static boolean useInternalStorage = true;
     
     /**
      * 初始化日志系统
      */
     public static void init(Context context) {
         logDir = getLogDirectory(context);
+        
+        // 确保目录存在
         if (!logDir.exists()) {
-            logDir.mkdirs();
+            boolean created = logDir.mkdirs();
+            if (!created) {
+                // 如果创建失败，尝试使用内部存储
+                Log.w(TAG, "创建日志目录失败，尝试使用内部存储");
+                useInternalStorage = true;
+                logDir = getInternalLogDirectory(context);
+                logDir.mkdirs();
+            }
         }
+        
         cleanOldLogs();
         logFile = getTodayLogFile();
         
         i(TAG, "========== 应用启动 ==========");
+        i(TAG, "存储类型: " + (useInternalStorage ? "内部存储" : "外部存储"));
         i(TAG, "日志路径: " + getLogDirectoryPath());
         i(TAG, "日志文件: " + getLogFilePath());
     }
     
     /**
-     * 获取日志目录
-     * 路径: Android/data/qzrs.Scrcpy/files/logs
+     * 获取内部存储日志目录
+     * 路径: /data/data/qzrs.Scrcpy/files/logs
      */
-    private static File getLogDirectory(Context context) {
+    private static File getInternalLogDirectory(Context context) {
+        return new File(context.getFilesDir(), LOG_DIR);
+    }
+    
+    /**
+     * 获取外部存储日志目录
+     * 路径: /storage/emulated/0/Android/data/qzrs.Scrcpy/files/logs
+     */
+    private static File getExternalLogDirectory(Context context) {
         File androidDataDir = new File(Environment.getExternalStorageDirectory(), "Android/data");
         File packageDir = new File(androidDataDir, context.getPackageName());
         File filesDir = new File(packageDir, "files");
         return new File(filesDir, LOG_DIR);
+    }
+    
+    /**
+     * 获取日志目录（优先使用内部存储）
+     */
+    private static File getLogDirectory(Context context) {
+        // 优先尝试内部存储
+        File internalDir = getInternalLogDirectory(context);
+        if (canWrite(internalDir)) {
+            useInternalStorage = true;
+            return internalDir;
+        }
+        
+        // 内部存储不可用，尝试外部存储
+        File externalDir = getExternalLogDirectory(context);
+        if (canWrite(externalDir)) {
+            useInternalStorage = false;
+            return externalDir;
+        }
+        
+        // 都不可用，返回内部存储（会尝试创建）
+        useInternalStorage = true;
+        return internalDir;
+    }
+    
+    /**
+     * 检查目录是否可写
+     */
+    private static boolean canWrite(File dir) {
+        try {
+            if (!dir.exists()) {
+                return dir.mkdirs();
+            }
+            // 尝试创建测试文件
+            File testFile = new File(dir, ".write_test");
+            boolean canWrite = testFile.createNewFile();
+            if (canWrite) {
+                testFile.delete();
+            }
+            return canWrite;
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     /**
@@ -98,6 +166,11 @@ public class LogHelper {
     private static void writeLog(String level, String tag, String message, Throwable throwable) {
         if (logFile == null || logDir == null) {
             return;
+        }
+        
+        // 检查目录是否存在
+        if (!logDir.exists()) {
+            logDir.mkdirs();
         }
         
         String today = DATE_FORMAT.format(new Date());
@@ -226,5 +299,12 @@ public class LogHelper {
     
     public static String getLogDirectoryPath() {
         return logDir != null ? logDir.getAbsolutePath() : "";
+    }
+    
+    /**
+     * 获取存储类型描述
+     */
+    public static String getStorageType() {
+        return useInternalStorage ? "内部存储" : "外部存储";
     }
 }
