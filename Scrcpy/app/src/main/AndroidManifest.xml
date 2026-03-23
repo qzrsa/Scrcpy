@@ -40,6 +40,9 @@
       android:name=".IpActivity"
       android:exported="false" />
     <activity
+      android:name=".ListenActivity"
+      android:exported="false" />
+    <activity
       android:name=".client.view.FullActivity"
       android:exported="false" />
     <activity
@@ -60,6 +63,9 @@
         android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
         android:resource="@xml/device_filter" />
     </activity>
+    <activity
+      android:name=".ListenActivity"
+      android:exported="false" />
   </application>
 
 </manifest>
