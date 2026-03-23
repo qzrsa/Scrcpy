@@ -64,6 +64,12 @@
         android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
         android:resource="@xml/device_filter" />
     </activity>
+
+    <!-- P2P 监听服务 -->
+    <service
+      android:name=".P2PListenService"
+      android:exported="false"
+      android:foregroundServiceType="dataSync" />
   </application>
 
 </manifest>
