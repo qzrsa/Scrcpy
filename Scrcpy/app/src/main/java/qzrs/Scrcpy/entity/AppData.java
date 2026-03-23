@@ -12,6 +12,7 @@ import android.view.WindowManager;
 import qzrs.Scrcpy.MainActivity;
 import qzrs.Scrcpy.adb.AdbKeyPair;
 import qzrs.Scrcpy.helper.DbHelper;
+import qzrs.Scrcpy.helper.LogHelper;
 import qzrs.Scrcpy.helper.PublicTools;
 
 public class AppData {
@@ -40,6 +41,10 @@ public class AppData {
     mainActivity = m;
     applicationContext = m.getApplicationContext();
     uiHandler = new android.os.Handler(m.getMainLooper());
+    
+    // 初始化日志系统
+    LogHelper.init(applicationContext);
+    
     dbHelper = new DbHelper(applicationContext);
     clipBoard = (ClipboardManager) applicationContext.getSystemService(Context.CLIPBOARD_SERVICE);
     wifiManager = (WifiManager) applicationContext.getSystemService(Context.WIFI_SERVICE);
@@ -49,6 +54,8 @@ public class AppData {
     setting = new Setting(applicationContext.getSharedPreferences("setting", Context.MODE_PRIVATE));
     // 读取密钥
     keyPair = PublicTools.readAdbKeyPair();
+    
+    LogHelper.i("AppData", "应用初始化完成");
   }
 
 }

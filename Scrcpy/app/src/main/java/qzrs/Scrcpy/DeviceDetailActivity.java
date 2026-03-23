@@ -21,6 +21,7 @@ import qzrs.Scrcpy.databinding.ItemScanAddressListBinding;
 import qzrs.Scrcpy.databinding.ItemTextBinding;
 import qzrs.Scrcpy.entity.AppData;
 import qzrs.Scrcpy.entity.Device;
+import qzrs.Scrcpy.helper.LogHelper;
 import qzrs.Scrcpy.helper.MyBroadcastReceiver;
 import qzrs.Scrcpy.helper.PublicTools;
 import qzrs.Scrcpy.helper.ViewTools;

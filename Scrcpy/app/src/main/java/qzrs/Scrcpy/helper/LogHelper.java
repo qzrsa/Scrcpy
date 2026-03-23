@@ -1,0 +1,230 @@
+package qzrs.Scrcpy.helper;
+
+import android.content.Context;
+import android.os.Environment;
+import android.util.Log;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.Locale;
+
+/**
+ * 日志工具类
+ * - 每次启动创建1个日志文件
+ * - 日志最多保存5个
+ * - 自动清理多余的旧日志
+ */
+public class LogHelper {
+    private static final String TAG = "Scrcpy";
+    private static final String LOG_DIR = "logs";
+    private static final int MAX_LOG_FILES = 5;
+    
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+    private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
+    private static final SimpleDateFormat FILE_NAME_FORMAT = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US);
+    
+    private static File logFile;
+    private static File logDir;
+    
+    /**
+     * 初始化日志系统
+     */
+    public static void init(Context context) {
+        logDir = getLogDirectory(context);
+        if (!logDir.exists()) {
+            logDir.mkdirs();
+        }
+        cleanOldLogs();
+        logFile = getTodayLogFile();
+        
+        i(TAG, "========== 应用启动 ==========");
+        i(TAG, "日志路径: " + getLogDirectoryPath());
+        i(TAG, "日志文件: " + getLogFilePath());
+    }
+    
+    /**
+     * 获取日志目录
+     * 路径: Android/data/qzrs.Scrcpy/files/logs
+     */
+    private static File getLogDirectory(Context context) {
+        File androidDataDir = new File(Environment.getExternalStorageDirectory(), "Android/data");
+        File packageDir = new File(androidDataDir, context.getPackageName());
+        File filesDir = new File(packageDir, "files");
+        return new File(filesDir, LOG_DIR);
+    }
+    
+    /**
+     * 获取今天的日志文件
+     * 文件名: yyyy-MM-dd_HH-mm-ss.log
+     */
+    private static File getTodayLogFile() {
+        String fileName = FILE_NAME_FORMAT.format(new Date()) + ".log";
+        return new File(logDir, fileName);
+    }
+    
+    /**
+     * 清理超过5个的旧日志
+     */
+    private static void cleanOldLogs() {
+        if (logDir == null || !logDir.exists()) {
+            return;
+        }
+        
+        File[] files = logDir.listFiles((dir, name) -> name.endsWith(".log"));
+        
+        if (files == null || files.length <= MAX_LOG_FILES) {
+            return;
+        }
+        
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+        
+        int deleteCount = files.length - MAX_LOG_FILES;
+        for (int i = 0; i < deleteCount; i++) {
+            files[i].delete();
+        }
+    }
+    
+    /**
+     * 写日志
+     */
+    private static void writeLog(String level, String tag, String message, Throwable throwable) {
+        if (logFile == null || logDir == null) {
+            return;
+        }
+        
+        String today = DATE_FORMAT.format(new Date());
+        String lastModifiedDate = logFile.exists() ? DATE_FORMAT.format(new Date(logFile.lastModified())) : "";
+        
+        if (!today.equals(lastModifiedDate)) {
+            logFile = getTodayLogFile();
+            cleanOldLogs();
+        }
+        
+        try (FileWriter fw = new FileWriter(logFile, true);
+             BufferedWriter bw = new BufferedWriter(fw);
+             PrintWriter pw = new PrintWriter(bw)) {
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append("[").append(TIME_FORMAT.format(new Date())).append("] ");
+            sb.append("[").append(level).append("] ");
+            sb.append("[").append(tag).append("] ");
+            sb.append(message);
+            
+            if (throwable != null) {
+                sb.append("\n");
+                StringWriter sw = new StringWriter();
+                PrintWriter swPw = new PrintWriter(sw);
+                throwable.printStackTrace(swPw);
+                sb.append(sw.toString());
+            }
+            
+            pw.println(sb.toString());
+            pw.flush();
+            
+        } catch (IOException e) {
+            Log.e(TAG, "写日志失败: " + e.getMessage());
+        }
+    }
+    
+    // ==================== 公开方法 ====================
+    
+    public static void d(String tag, String message) {
+        Log.d(tag, message);
+        writeLog("D", tag, message, null);
+    }
+    
+    public static void i(String tag, String message) {
+        Log.i(tag, message);
+        writeLog("I", tag, message, null);
+    }
+    
+    public static void w(String tag, String message) {
+        Log.w(tag, message);
+        writeLog("W", tag, message, null);
+    }
+    
+    public static void e(String tag, String message) {
+        Log.e(tag, message);
+        writeLog("E", tag, message, null);
+    }
+    
+    public static void e(String tag, String message, Throwable throwable) {
+        Log.e(tag, message, throwable);
+        writeLog("E", tag, message, throwable);
+    }
+    
+    public static void wtf(String tag, String message) {
+        Log.wtf(tag, message);
+        writeLog("F", tag, "WTF: " + message, null);
+    }
+    
+    public static void wtf(String tag, String message, Throwable throwable) {
+        Log.wtf(tag, message, throwable);
+        writeLog("F", tag, "WTF: " + message, throwable);
+    }
+    
+    // ==================== 便捷方法 ====================
+    
+    public static void methodIn(String tag) {
+        d(tag, ">>> 进入方法");
+    }
+    
+    public static void methodOut(String tag) {
+        d(tag, "<<< 退出方法");
+    }
+    
+    public static void methodTime(String tag, String methodName, long startTime) {
+        long duration = System.currentTimeMillis() - startTime;
+        d(tag, "方法 [" + methodName + "] 执行耗时: " + duration + "ms");
+    }
+    
+    public static void var(String tag, String name, Object value) {
+        d(tag, "变量 [" + name + "] = " + String.valueOf(value));
+    }
+    
+    public static void call(String tag, String methodName, Object... args) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("调用方法: ").append(methodName).append("(");
+        if (args != null && args.length > 0) {
+            for (int i = 0; i < args.length; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(String.valueOf(args[i]));
+            }
+        }
+        sb.append(")");
+        d(tag, sb.toString());
+    }
+    
+    public static void connection(String tag, String deviceAddress, int port, int mode) {
+        String[] modeNames = {"默认(ADB)", "P2P直连", "中继模式"};
+        String modeStr = mode >= 0 && mode < modeNames.length ? modeNames[mode] : "未知";
+        i(tag, "连接设备: 地址=" + deviceAddress + ", 端口=" + port + ", 模式=" + modeStr);
+    }
+    
+    public static void device(String tag, String deviceName, String uuid, int connectionMode) {
+        String[] modeNames = {"默认(ADB)", "P2P直连", "中继模式"};
+        String mode = connectionMode >= 0 && connectionMode < modeNames.length 
+            ? modeNames[connectionMode] : "未知";
+        i(tag, "设备信息: 名称=" + deviceName + ", UUID=" + uuid + ", 连接模式=" + mode);
+    }
+    
+    public static void config(String tag, String key, Object oldValue, Object newValue) {
+        i(tag, "配置变更: " + key + " [" + oldValue + " -> " + newValue + "]");
+    }
+    
+    public static String getLogFilePath() {
+        return logFile != null ? logFile.getAbsolutePath() : "";
+    }
+    
+    public static String getLogDirectoryPath() {
+        return logDir != null ? logDir.getAbsolutePath() : "";
+    }
+}
