@@ -6,20 +6,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.ClipData;
-import android.content.ClipDescription;
-import android.content.Context;
-import android.content.Intent;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.util.Pair;
-import android.widget.Toast;
-
-import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -262,13 +248,15 @@ class P2PListenService extends Service {
             PendingIntent.FLAG_IMMUTABLE
         );
         
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        Notification notification = new Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("P2P 投屏服务运行中")
             .setContentText("监听端口: " + listeningPort)
             .setSmallIcon(R.drawable.wifi)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build();
+        
+        return notification;
     }
     
     private void startListening() {
@@ -336,7 +324,6 @@ class P2PListenService extends Service {
         super.onDestroy();
     }
     
-    @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
