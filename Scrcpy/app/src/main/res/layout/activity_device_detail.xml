@@ -116,6 +116,150 @@
           android:textColorHint="@color/onCardBackgroundSecond"
           android:textSize="@dimen/smallFont" />
 
+        <!-- Connection Mode -->
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:text="@string/device_connection_mode"
+          android:textColor="@color/onCardBackground"
+          android:textSize="@dimen/middleFont" />
+
+        <Spinner
+          android:id="@+id/connection_mode"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:background="@drawable/background_cron_stroke"
+          android:padding="8dp" />
+
+        <!-- P2P/Relay Config -->
+        <LinearLayout
+          android:id="@+id/layout_p2p_relay_config"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:visibility="gone">
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_stun_server"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/stun_server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="stun:stun.l.google.com:19302"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_turn_server"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/turn_server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/device_turn_server_hint"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_turn_username"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/turn_username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_turn_password"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/turn_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:password="true"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_relay_server"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/relay_server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/device_relay_server_hint"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_relay_port"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/relay_port"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:digits="0123456789"
+            android:text="8000"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_relay_token"
+            android:textColor="@color/onCardBackground"
+            android:textSize="@dimen/middleFont" />
+
+          <EditText
+            android:id="@+id/relay_token"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/onCardBackground"
+            android:textColorHint="@color/onCardBackgroundSecond"
+            android:textSize="@dimen/smallFont" />
+
+        </LinearLayout>
+
         <TextView
           android:layout_width="match_parent"
           android:layout_height="wrap_content"

@@ -14,7 +14,7 @@ import qzrs.Scrcpy.entity.Device;
 public class DbHelper extends SQLiteOpenHelper {
 
   private static final String dataBaseName = "app.db";
-  private static final int version = 23;
+  private static final int version = 24;
   private final String tableName = "DevicesDb";
 
   public DbHelper(Context context) {
@@ -60,7 +60,16 @@ public class DbHelper extends SQLiteOpenHelper {
     stringBuilder.append("smallXLan integer,");
     stringBuilder.append("smallYLan integer,");
     stringBuilder.append("smallLengthLan integer,");
-    stringBuilder.append("miniY integer);");
+    stringBuilder.append("miniY integer,");
+    // 连接模式配置
+    stringBuilder.append("connectionMode integer,");
+    stringBuilder.append("stunServer text,");
+    stringBuilder.append("turnServer text,");
+    stringBuilder.append("turnUsername text,");
+    stringBuilder.append("turnPassword text,");
+    stringBuilder.append("relayServer text,");
+    stringBuilder.append("relayPort integer,");
+    stringBuilder.append("relayToken text);");
     db.execSQL(stringBuilder.toString());
   }
 
@@ -158,6 +167,15 @@ public class DbHelper extends SQLiteOpenHelper {
     values.put("smallYLan", device.smallYLan);
     values.put("smallLengthLan", device.smallLengthLan);
     values.put("miniY", device.miniY);
+    // 连接模式配置
+    values.put("connectionMode", device.connectionMode);
+    values.put("stunServer", device.stunServer);
+    values.put("turnServer", device.turnServer);
+    values.put("turnUsername", device.turnUsername);
+    values.put("turnPassword", device.turnPassword);
+    values.put("relayServer", device.relayServer);
+    values.put("relayPort", device.relayPort);
+    values.put("relayToken", device.relayToken);
     return values;
   }
 
@@ -300,6 +318,39 @@ public class DbHelper extends SQLiteOpenHelper {
         }
         case "miniY": {
           device.miniY = cursor.getInt(i);
+          break;
+        }
+        // 连接模式配置
+        case "connectionMode": {
+          device.connectionMode = cursor.getInt(i);
+          break;
+        }
+        case "stunServer": {
+          device.stunServer = cursor.getString(i);
+          break;
+        }
+        case "turnServer": {
+          device.turnServer = cursor.getString(i);
+          break;
+        }
+        case "turnUsername": {
+          device.turnUsername = cursor.getString(i);
+          break;
+        }
+        case "turnPassword": {
+          device.turnPassword = cursor.getString(i);
+          break;
+        }
+        case "relayServer": {
+          device.relayServer = cursor.getString(i);
+          break;
+        }
+        case "relayPort": {
+          device.relayPort = cursor.getInt(i);
+          break;
+        }
+        case "relayToken": {
+          device.relayToken = cursor.getString(i);
           break;
         }
       }

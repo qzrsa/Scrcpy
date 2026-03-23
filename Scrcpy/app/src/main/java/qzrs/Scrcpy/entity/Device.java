@@ -5,8 +5,27 @@ import java.util.Objects;
 public class Device {
   public static final int TYPE_NETWORK = 1;
   public static final int TYPE_LINK = 2;
+  
+  // 连接模式：0=默认(ADB), 1=P2P直连, 2=中继模式
+  public static final int CONNECTION_MODE_DEFAULT = 0;
+  public static final int CONNECTION_MODE_P2P = 1;
+  public static final int CONNECTION_MODE_RELAY = 2;
+  
   public final String uuid;
   public final int type;
+  
+  // 连接模式
+  public int connectionMode = CONNECTION_MODE_DEFAULT;
+  
+  // P2P/中继配置
+  public String stunServer = "stun:stun.l.google.com:19302";
+  public String turnServer = "";
+  public String turnUsername = "";
+  public String turnPassword = "";
+  public String relayServer = "";
+  public int relayPort = 8000;
+  public String relayToken = "";
+  
   public String name;
   public String address = "";
   public String startApp = "";
@@ -59,6 +78,43 @@ public class Device {
   public boolean isTempDevice() {
     return Objects.equals(name, "----");
   }
+  
+  /**
+   * 获取连接模式枚举
+   */
+  public int getConnectionMode() {
+    return connectionMode;
+  }
+  
+  /**
+   * 判断是否使用 P2P 模式
+   */
+  public boolean isP2PMode() {
+    return connectionMode == CONNECTION_MODE_P2P;
+  }
+  
+  /**
+   * 判断是否使用中继模式
+   */
+  public boolean isRelayMode() {
+    return connectionMode == CONNECTION_MODE_RELAY;
+  }
+  
+  /**
+   * 创建连接配置
+   */
+  public qzrs.Scrcpy.connection.ConnectionConfig createConnectionConfig() {
+    qzrs.Scrcpy.connection.ConnectionConfig config = new qzrs.Scrcpy.connection.ConnectionConfig();
+    config.setMode(qzrs.Scrcpy.connection.ConnectionMode.fromValue(connectionMode));
+    config.setStunServer(stunServer);
+    config.setTurnServer(turnServer);
+    config.setTurnUsername(turnUsername);
+    config.setTurnPassword(turnPassword);
+    config.setRelayServer(relayServer);
+    config.setRelayPort(relayPort);
+    config.setRelayToken(relayToken);
+    return config;
+  }
 
   public Device clone(String uuid) {
     Device newDevice = new Device(uuid, type);
@@ -97,6 +153,17 @@ public class Device {
     newDevice.smallYLan = smallYLan;
     newDevice.smallLengthLan = smallLengthLan;
     newDevice.miniY = miniY;
+    
+    // 连接模式配置
+    newDevice.connectionMode = connectionMode;
+    newDevice.stunServer = stunServer;
+    newDevice.turnServer = turnServer;
+    newDevice.turnUsername = turnUsername;
+    newDevice.turnPassword = turnPassword;
+    newDevice.relayServer = relayServer;
+    newDevice.relayPort = relayPort;
+    newDevice.relayToken = relayToken;
+    
     return newDevice;
   }
 }

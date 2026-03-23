@@ -52,6 +52,8 @@ public class DeviceDetailActivity extends Activity {
   private static final String[] maxSizeList = new String[]{"2560", "1920", "1600", "1280", "1024", "800"};
   private static final String[] maxFpsList = new String[]{"90", "60", "40", "30", "20", "10"};
   private static final String[] maxVideoBitList = new String[]{"12", "8", "4", "2", "1"};
+  // 连接模式选项
+  private static final String[] connectionModeList = new String[]{"默认模式 (ADB)", "P2P 直连", "中继模式"};
 
   private void drawUI() {
     // UUID
@@ -68,6 +70,36 @@ public class DeviceDetailActivity extends Activity {
     activityDeviceDetailBinding.customResolution.setVisibility(device.customResolutionOnConnect ? View.VISIBLE : View.GONE);
     activityDeviceDetailBinding.customResolutionWidth.setText(String.valueOf(device.customResolutionWidth));
     activityDeviceDetailBinding.customResolutionHeight.setText(String.valueOf(device.customResolutionHeight));
+    
+    // 连接模式初始化
+    ArrayAdapter<String> connectionModeAdapter = new ArrayAdapter<>(this, R.layout.item_spinner_item, connectionModeList);
+    activityDeviceDetailBinding.connectionMode.setAdapter(connectionModeAdapter);
+    activityDeviceDetailBinding.connectionMode.setSelection(device.connectionMode);
+    activityDeviceDetailBinding.connectionMode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+      @Override
+      public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+        device.connectionMode = position;
+        // 根据模式显示/隐藏 P2P/中继配置
+        activityDeviceDetailBinding.layoutP2pRelayConfig.setVisibility(
+          position == Device.CONNECTION_MODE_P2P || position == Device.CONNECTION_MODE_RELAY ? View.VISIBLE : View.GONE);
+      }
+      @Override
+      public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+    });
+    
+    // 初始化 P2P/中继配置
+    activityDeviceDetailBinding.stunServer.setText(device.stunServer);
+    activityDeviceDetailBinding.turnServer.setText(device.turnServer);
+    activityDeviceDetailBinding.turnUsername.setText(device.turnUsername);
+    activityDeviceDetailBinding.turnPassword.setText(device.turnPassword);
+    activityDeviceDetailBinding.relayServer.setText(device.relayServer);
+    activityDeviceDetailBinding.relayPort.setText(String.valueOf(device.relayPort));
+    activityDeviceDetailBinding.relayToken.setText(device.relayToken);
+    
+    // 根据模式显示/隐藏 P2P/中继配置
+    activityDeviceDetailBinding.layoutP2pRelayConfig.setVisibility(
+      device.connectionMode == Device.CONNECTION_MODE_P2P || device.connectionMode == Device.CONNECTION_MODE_RELAY ? View.VISIBLE : View.GONE);
+    
     // 连接时操作
     activityDeviceDetailBinding.layoutOnConnect.setOnClickListener(v -> activityDeviceDetailBinding.layoutOnConnectSub.setVisibility(activityDeviceDetailBinding.layoutOnConnectSub.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
     activityDeviceDetailBinding.layoutOnConnectSub.addView(ViewTools.createSwitchCard(this, getString(R.string.device_custom_resolution_on_connect), getString(R.string.device_custom_resolution_on_connect_detail), device.customResolutionOnConnect, isChecked -> activityDeviceDetailBinding.customResolution.setVisibility(isChecked ? View.VISIBLE : View.GONE)).getRoot(), 0);
@@ -118,6 +150,30 @@ public class DeviceDetailActivity extends Activity {
       device.startApp = String.valueOf(activityDeviceDetailBinding.startApp.getText());
       device.adbPort = Integer.parseInt(String.valueOf(activityDeviceDetailBinding.adbPort.getText()));
       device.serverPort = Integer.parseInt(String.valueOf(activityDeviceDetailBinding.serverPort.getText()));
+      
+      // 保存连接模式配置
+      device.connectionMode = activityDeviceDetailBinding.connectionMode.getSelectedItemPosition();
+      device.stunServer = String.valueOf(activityDeviceDetailBinding.stunServer.getText());
+      device.turnServer = String.valueOf(activityDeviceDetailBinding.turnServer.getText());
+      device.turnUsername = String.valueOf(activityDeviceDetailBinding.turnUsername.getText());
+      device.turnPassword = String.valueOf(activityDeviceDetailBinding.turnPassword.getText());
+      device.relayServer = String.valueOf(activityDeviceDetailBinding.relayServer.getText());
+      
+      String relayPortStr = String.valueOf(activityDeviceDetailBinding.relayPort.getText());
+      if (!relayPortStr.isEmpty()) {
+        device.relayPort = Integer.parseInt(relayPortStr);
+      }
+      
+      device.relayToken = String.valueOf(activityDeviceDetailBinding.relayToken.getText());
+      
+      // 如果使用默认模式，清空不需要的配置
+      if (device.connectionMode == Device.CONNECTION_MODE_DEFAULT) {
+        // 保留默认 STUN 服务器供需要时使用
+        if (device.stunServer.isEmpty()) {
+          device.stunServer = "stun:stun.l.google.com:19302";
+        }
+      }
+      
       // 自定义分辨率
       String width = String.valueOf(activityDeviceDetailBinding.customResolutionWidth.getText());
       String height = String.valueOf(activityDeviceDetailBinding.customResolutionHeight.getText());

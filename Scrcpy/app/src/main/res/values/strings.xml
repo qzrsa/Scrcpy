@@ -41,6 +41,19 @@
   <string name="device_start_app_hint">为空则镜像投屏</string>
   <string name="device_adb_port">ADB 端口</string>
   <string name="device_server_port">服务端口</string>
+  <string name="device_connection_mode">连接模式</string>
+  <string name="device_connection_mode_default">默认模式 (ADB)</string>
+  <string name="device_connection_mode_p2p">P2P 直连</string>
+  <string name="device_connection_mode_relay">中继模式</string>
+  <string name="device_stun_server">STUN 服务器</string>
+  <string name="device_turn_server">TURN 服务器</string>
+  <string name="device_turn_server_hint">可选，用于 P2P 失败时中继</string>
+  <string name="device_turn_username">TURN 用户名</string>
+  <string name="device_turn_password">TURN 密码</string>
+  <string name="device_relay_server">中继服务器地址</string>
+  <string name="device_relay_server_hint">your-relay-server.com</string>
+  <string name="device_relay_port">中继服务器端口</string>
+  <string name="device_relay_token">中继服务器令牌</string>
 
   <string name="device_on_connect">连接时操作</string>
   <string name="device_custom_resolution_on_connect">连接时修改分辨率</string>

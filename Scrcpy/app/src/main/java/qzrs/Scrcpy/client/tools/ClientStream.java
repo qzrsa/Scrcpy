@@ -12,6 +12,10 @@ import qzrs.Scrcpy.R;
 import qzrs.Scrcpy.adb.Adb;
 import qzrs.Scrcpy.buffer.BufferStream;
 import qzrs.Scrcpy.client.decode.DecodecTools;
+import qzrs.Scrcpy.connection.ConnectionConfig;
+import qzrs.Scrcpy.connection.ConnectionResult;
+import qzrs.Scrcpy.connection.P2pClientConnector;
+import qzrs.Scrcpy.connection.RelayClientConnector;
 import qzrs.Scrcpy.entity.AppData;
 import qzrs.Scrcpy.entity.Device;
 import qzrs.Scrcpy.entity.MyInterface;
@@ -96,6 +100,24 @@ public class ClientStream {
     Thread.sleep(50);
     int reTry = 40;
     int reTryTime = timeoutDelay / reTry;
+    
+    // 根据连接模式选择连接方式
+    if (device.connectionMode == Device.CONNECTION_MODE_P2P) {
+      // P2P 直连模式
+      connectP2P(device, reTry, reTryTime);
+    } else if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
+      // 中继模式
+      connectRelay(device, reTry, reTryTime);
+    } else {
+      // 默认模式 (原有逻辑)
+      connectDefault(device, reTry, reTryTime);
+    }
+  }
+  
+  /**
+   * 默认模式连接 (原有逻辑)
+   */
+  private void connectDefault(Device device, int reTry, int reTryTime) throws Exception {
     if (!device.isLinkDevice()) {
       long startTime = System.currentTimeMillis();
       boolean mainConn = false;
@@ -132,6 +154,68 @@ public class ClientStream {
       }
     }
     throw new Exception(AppData.applicationContext.getString(R.string.toast_connect_server));
+  }
+  
+  /**
+   * P2P 直连模式
+   * 使用 STUN/TURN 尝试建立 P2P 连接，失败时回退到默认模式
+   */
+  private void connectP2P(Device device, int reTry, int reTryTime) throws Exception {
+    // P2P 连接逻辑 - 先尝试直连，失败则回退
+    try {
+      ConnectionConfig config = device.createConnectionConfig();
+      P2pClientConnector p2pConnector = new P2pClientConnector(config);
+      ConnectionResult result = p2pConnector.connect(device.address, device.serverPort);
+      
+      if (result.isSuccess()) {
+        mainSocket = result.getMainSocket();
+        videoSocket = result.getVideoSocket();
+        mainOutputStream = result.getMainOutputStream();
+        mainDataInputStream = new DataInputStream(mainSocket.getInputStream());
+        videoDataInputStream = new DataInputStream(videoSocket.getInputStream());
+        connectDirect = result.isDirect();
+        p2pConnector.close();
+        return;
+      } else {
+        // P2P 失败，回退到默认模式
+        android.util.Log.w("ClientStream", "P2P connection failed, falling back to default: " + result.getErrorMessage());
+        connectDefault(device, reTry, reTryTime);
+      }
+    } catch (Exception e) {
+      // P2P 异常，回退到默认模式
+      android.util.Log.w("ClientStream", "P2P exception, falling back to default: " + e.getMessage());
+      connectDefault(device, reTry, reTryTime);
+    }
+  }
+  
+  /**
+   * 中继模式
+   * 通过中继服务器建立连接
+   */
+  private void connectRelay(Device device, int reTry, int reTryTime) throws Exception {
+    try {
+      ConnectionConfig config = device.createConnectionConfig();
+      RelayClientConnector relayConnector = new RelayClientConnector(config);
+      ConnectionResult result = relayConnector.connect(device.uuid);
+      
+      if (result.isSuccess()) {
+        mainSocket = result.getMainSocket();
+        videoSocket = result.getVideoSocket();
+        mainOutputStream = result.getMainOutputStream();
+        mainDataInputStream = new DataInputStream(mainSocket.getInputStream());
+        videoDataInputStream = new DataInputStream(videoSocket.getInputStream());
+        connectDirect = false; // 经过中继
+        return;
+      } else {
+        // 中继失败，回退到默认模式
+        android.util.Log.w("ClientStream", "Relay connection failed, falling back to default: " + result.getErrorMessage());
+        connectDefault(device, reTry, reTryTime);
+      }
+    } catch (Exception e) {
+      // 中继异常，回退到默认模式
+      android.util.Log.w("ClientStream", "Relay exception, falling back to default: " + e.getMessage());
+      connectDefault(device, reTry, reTryTime);
+    }
   }
 
   public String runShell(String cmd) throws Exception {
