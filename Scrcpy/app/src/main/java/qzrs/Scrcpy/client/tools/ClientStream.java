@@ -39,6 +39,9 @@ public class ClientStream {
   // 统计信息覆盖层
   private final StatsOverlay statsOverlay = new StatsOverlay();
 
+  // 心跳包发送时间戳，用于计算RTT
+  public long pingSendTime = 0;
+
   public StatsOverlay getStatsOverlay() {
     return statsOverlay;
   }
@@ -169,7 +172,7 @@ public class ClientStream {
       videoDataInputStream.readFully(buffer);
       return ByteBuffer.wrap(buffer);
     }
-    return videoBufferStream.readByteArray(size);
+    return videoBufferStream.readByteArrayFromVideo(size);
   }
 
   public ByteBuffer readFrameFromMain() throws Exception {
@@ -190,13 +193,10 @@ public class ClientStream {
 
   /**
    * 发送 keepAlive 并测量 RTT 延迟，结果上报给 StatsOverlay
-   * 注意：需要在发送 keepAlive 前后计时，此处仅记录发送时间戳供外部调用
    */
   public void writeToMainWithLatency(ByteBuffer byteBuffer) throws Exception {
-    long start = System.currentTimeMillis();
+    pingSendTime = System.currentTimeMillis();
     writeToMain(byteBuffer);
-    long latency = System.currentTimeMillis() - start;
-    statsOverlay.onLatency(latency);
   }
 
   public void close() {
