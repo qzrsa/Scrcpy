@@ -97,7 +97,7 @@ public final class Server {
     // 3
     Class<?> inputManagerClass;
     try {
-      inputManagerClass = Class.forName("android.hardware.input.InputManagerGlobal");
+      inputManagerClass = Class.forName("android.hardware.input.InputManager");
     } catch (ClassNotFoundException e) {
       inputManagerClass = android.hardware.input.InputManager.class;
     }
@@ -178,6 +178,8 @@ public final class Server {
             break;
           case 4:
             lastKeepAliveTime = System.currentTimeMillis();
+            // 收到心跳包，原样返回，用于客户端计算RTT往返延迟
+            mainOutputStream.write(new byte[]{4});
             break;
           case 5:
             Device.changeResolution(mainInputStream.readFloat());
