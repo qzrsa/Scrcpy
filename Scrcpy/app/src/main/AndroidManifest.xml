@@ -68,8 +68,7 @@
     <!-- P2P 监听服务 -->
     <service
       android:name=".P2PListenService"
-      android:exported="false"
-      android:foregroundServiceType="dataSync" />
+      android:exported="false" />
   </application>
 
 </manifest>
