@@ -4,7 +4,6 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
@@ -141,20 +140,6 @@ public class StatsOverlay {
   public void onLatency(long ms) {
     latencyMs = ms;
     updateText();
-  }
-
-    /**
-   * 显示悬浮窗（仅全屏时调用）
-   */
-  public void showForFullScreen() {
-    show();
-  }
-
-  /**
-   * 隐藏悬浮窗（切换到小窗时调用）
-   */
-  public void hideForSmallWindow() {
-    hide();
   }
 
   private void updateText() {

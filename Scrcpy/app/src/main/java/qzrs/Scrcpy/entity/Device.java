@@ -86,13 +86,6 @@ public class Device {
   }
   
   /**
-   * 判断是否使用 P2P 模式
-   */
-  public boolean isP2PMode() {
-    return connectionMode == CONNECTION_MODE_P2P;
-  }
-  
-  /**
    * 判断是否使用中继模式
    */
   public boolean isRelayMode() {
