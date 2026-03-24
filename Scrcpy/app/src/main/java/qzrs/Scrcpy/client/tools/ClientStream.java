@@ -281,7 +281,12 @@ public class ClientStream {
       // 使用 P2PClientConnector 尝试直连
       ConnectionConfig config = device.createConnectionConfig();
       P2pClientConnector p2pConnector = new P2pClientConnector(config);
-      ConnectionResult result = p2pConnector.connect(device.uuid);
+      
+      // 获取被控端的 IP 地址和端口
+      String serverAddress = device.address;
+      int serverPort = device.serverPort;
+      
+      ConnectionResult result = p2pConnector.connect(serverAddress, serverPort);
       
       if (result.isSuccess()) {
         // 保存原来的 socket
