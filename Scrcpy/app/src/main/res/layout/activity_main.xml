@@ -41,15 +41,6 @@
     </LinearLayout>
 
     <ImageView
-      android:id="@+id/button_listen"
-      android:layout_width="45dp"
-      android:layout_height="45dp"
-      android:layout_marginEnd="10dp"
-      android:padding="10dp"
-      android:src="@drawable/wifi"
-      android:tint="@color/onBackground" />
-
-    <ImageView
       android:id="@+id/button_set"
       android:layout_width="45dp"
       android:layout_height="45dp"
