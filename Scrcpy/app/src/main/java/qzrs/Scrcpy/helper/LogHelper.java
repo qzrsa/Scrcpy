@@ -34,7 +34,7 @@ public class LogHelper {
     
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
     private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
-    private static final SimpleDateFormat FILE_NAME_FORMAT = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US);
+    private static final SimpleDateFormat FILE_NAME_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
     
     private static File logFile;
     private static File logDir;
@@ -131,7 +131,7 @@ public class LogHelper {
     
     /**
      * 获取今天的日志文件
-     * 文件名: yyyy-MM-dd_HH-mm-ss.log
+     * 文件名: yyyy-MM-dd.log（每天一个文件）
      */
     private static File getTodayLogFile() {
         String fileName = FILE_NAME_FORMAT.format(new Date()) + ".log";
@@ -152,7 +152,8 @@ public class LogHelper {
             return;
         }
         
-        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+        // 按文件名排序（日期），保留最新的5个
+        Arrays.sort(files, Comparator.comparing(File::getName).reversed());
         
         int deleteCount = files.length - MAX_LOG_FILES;
         for (int i = 0; i < deleteCount; i++) {
