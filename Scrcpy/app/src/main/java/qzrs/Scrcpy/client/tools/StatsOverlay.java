@@ -4,18 +4,25 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
 
 import qzrs.Scrcpy.entity.AppData;
+import qzrs.Scrcpy.entity.Device;
 
 /**
- * 悬浮统计信息覆盖层：显示帧率、下载速度、链接延迟
+ * 悬浮统计信息覆盖层：显示帧率、下载速度、连接模式、延迟
  */
 public class StatsOverlay {
   private final TextView textView;
   private final WindowManager.LayoutParams params;
   private boolean isAdded = false;
+  
+  // 当前连接模式
+  private int connectionMode = Device.CONNECTION_MODE_DEFAULT;
+  private String connectionModeStr = "ADB";
 
   // 统计数据
   private int frameCount = 0;
@@ -25,6 +32,9 @@ public class StatsOverlay {
   private long latencyMs = -1;
 
   private long lastUpdateTime = System.currentTimeMillis();
+  
+  // 是否可见（全屏时显示，小窗时隐藏）
+  private boolean isVisible = false;
 
   public StatsOverlay() {
     textView = new TextView(AppData.applicationContext);
@@ -33,6 +43,11 @@ public class StatsOverlay {
     textView.setShadowLayer(3f, 1f, 1f, Color.BLACK);
     textView.setPadding(12, 6, 12, 6);
     textView.setBackgroundColor(0x88000000);
+    
+    // 点击后变透明
+    textView.setOnClickListener(v -> {
+      textView.setVisibility(View.INVISIBLE);
+    });
 
     params = new WindowManager.LayoutParams(
       WindowManager.LayoutParams.WRAP_CONTENT,
@@ -49,23 +64,61 @@ public class StatsOverlay {
     params.x = 16;
     params.y = 80;
   }
+  
+  /**
+   * 设置连接模式
+   * @param mode 连接模式：0=ADB, 1=中继模式
+   */
+  public void setConnectionMode(int mode) {
+    this.connectionMode = mode;
+    switch (mode) {
+      case Device.CONNECTION_MODE_RELAY:
+        this.connectionModeStr = "中继";
+        break;
+      default:
+        this.connectionModeStr = "ADB";
+        break;
+    }
+    updateText();
+  }
 
   public void show() {
+    if (isVisible) return;
+    isVisible = true;
+    
     AppData.uiHandler.post(() -> {
       if (!isAdded) {
         AppData.windowManager.addView(textView, params);
         isAdded = true;
       }
+      textView.setVisibility(View.VISIBLE);
     });
   }
 
   public void hide() {
+    if (!isVisible) return;
+    isVisible = false;
+    
     AppData.uiHandler.post(() -> {
       if (isAdded) {
         AppData.windowManager.removeView(textView);
         isAdded = false;
       }
     });
+  }
+  
+  /**
+   * 全屏时显示
+   */
+  public void showForFullScreen() {
+    show();
+  }
+  
+  /**
+   * 小窗时隐藏
+   */
+  public void hideForSmallWindow() {
+    hide();
   }
 
   /** 每解码一帧视频时调用，bytes 为本帧数据字节数 */
@@ -90,12 +143,28 @@ public class StatsOverlay {
     updateText();
   }
 
+    /**
+   * 显示悬浮窗（仅全屏时调用）
+   */
+  public void showForFullScreen() {
+    show();
+  }
+
+  /**
+   * 隐藏悬浮窗（切换到小窗时调用）
+   */
+  public void hideForSmallWindow() {
+    hide();
+  }
+
   private void updateText() {
     String latencyStr = latencyMs < 0 ? "--" : latencyMs + "ms";
     String speedStr = speedKbps >= 1024
       ? String.format("%.1fMB/s", speedKbps / 1024f)
       : String.format("%.0fKB/s", speedKbps);
-    String text = fps + "fps  " + speedStr + "  " + latencyStr;
+    
+    // 格式：fps 速度 模式 延迟
+    String text = fps + "fps  " + speedStr + "  " + connectionModeStr + "  " + latencyStr;
     AppData.uiHandler.post(() -> textView.setText(text));
   }
 }

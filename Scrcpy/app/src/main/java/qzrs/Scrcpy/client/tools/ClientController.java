@@ -165,6 +165,8 @@ public class ClientController implements TextureView.SurfaceTextureListener {
   }
 
   private synchronized void changeToFull() {
+    // 全屏时显示悬浮窗
+    clientStream.getStatsOverlay().showForFullScreen();
     hide();
     Intent intent = new Intent(AppData.mainActivity, FullActivity.class);
     intent.putExtra("uuid", device.uuid);
@@ -172,6 +174,8 @@ public class ClientController implements TextureView.SurfaceTextureListener {
   }
 
   private synchronized void changeToSmall() {
+    // 小窗时隐藏悬浮窗
+    clientStream.getStatsOverlay().hideForSmallWindow();
     hide();
     if (noFloatPermission()) {
       PublicTools.logToast("controller", AppData.applicationContext.getString(R.string.toast_float_per), true);
@@ -184,6 +188,8 @@ public class ClientController implements TextureView.SurfaceTextureListener {
   }
 
   private synchronized void changeToMini(ByteBuffer byteBuffer) {
+    // 小窗时隐藏悬浮窗
+    clientStream.getStatsOverlay().hideForSmallWindow();
     hide();
     if (noFloatPermission()) {
       PublicTools.logToast("controller", AppData.applicationContext.getString(R.string.toast_float_per), true);

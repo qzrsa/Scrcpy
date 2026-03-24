@@ -39,6 +39,10 @@ public class Client {
         allClient.put(device.uuid, this);
         // 控制器、播放器
         clientController = new ClientController(device, clientStream, () -> clientPlayer = new ClientPlayer(device.uuid, clientStream));
+        
+        // 设置连接模式到悬浮窗
+        clientStream.getStatsOverlay().setConnectionMode(device.connectionMode);
+        
         // 临时设备
         boolean isTempDevice = device.isTempDevice();
         // 启动界面
