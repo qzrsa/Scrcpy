@@ -25,6 +25,7 @@ public class ClientStream {
   private boolean isClose = false;
   private boolean connectDirect = false;
   private Adb adb;
+  private Device device;  // 保存设备引用，用于 P2P 检测
   private Socket mainSocket;
   private Socket videoSocket;
   private OutputStream mainOutputStream;
@@ -62,9 +63,21 @@ public class ClientStream {
     });
     connectThread = new Thread(() -> {
       try {
+        // 保存设备引用
+        ClientStream.this.device = device;
+        
         adb = AdbTools.connectADB(device);
         startServer(device);
         connectServer(device);
+        
+        // 连接成功后，更新悬浮窗显示当前模式
+        updateConnectionModeForOverlay(device);
+        
+        // 启动后台 P2P 检测线程（仅中继模式时）
+        if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
+          startP2PCheckThread();
+        }
+        
         handle.run(true);
       } catch (Exception e) {
         PublicTools.logToast("stream", e.toString(), true);
@@ -213,6 +226,86 @@ public class ClientStream {
       android.util.Log.w("ClientStream", "Relay exception, falling back to default: " + e.getMessage());
       connectDefault(device, reTry, reTryTime);
     }
+  }
+
+  /**
+   * 更新悬浮窗显示当前连接模式
+   */
+  private void updateConnectionModeForOverlay(Device device) {
+    int mode;
+    if (connectDirect) {
+      // connectDirect = true 表示直连模式（直接 TCP 连接）
+      mode = Device.CONNECTION_MODE_DIRECT;
+    } else {
+      // 经过中继或其他方式
+      mode = device.connectionMode;
+    }
+    statsOverlay.setConnectionMode(mode);
+  }
+  
+  /**
+   * 启动后台 P2P 检测线程
+   * 每隔几秒尝试 P2P 直连，成功后切换
+   */
+  private void startP2PCheckThread() {
+    Thread p2pCheckThread = new Thread(() -> {
+      while (!isClose) {
+        try {
+          // 每 5 秒检测一次
+          Thread.sleep(5000);
+          
+          // 尝试 P2P 直连
+          if (tryP2PDirectConnect()) {
+            android.util.Log.i("ClientStream", "P2P 直连成功，切换到直连模式");
+            statsOverlay.setConnectionMode(Device.CONNECTION_MODE_DIRECT);
+            // 可以选择断开中继连接，但为了简单，先保持
+            break;
+          }
+        } catch (InterruptedException e) {
+          break;
+        } catch (Exception e) {
+          android.util.Log.d("ClientStream", "P2P 检测异常: " + e.getMessage());
+        }
+      }
+    });
+    p2pCheckThread.setName("P2P-Check-Thread");
+    p2pCheckThread.start();
+  }
+  
+  /**
+   * 尝试 P2P 直连
+   * @return 是否成功
+   */
+  private boolean tryP2PDirectConnect() {
+    try {
+      // 使用 P2PClientConnector 尝试直连
+      ConnectionConfig config = device.createConnectionConfig();
+      P2pClientConnector p2pConnector = new P2pClientConnector(config);
+      ConnectionResult result = p2pConnector.connect(device.uuid);
+      
+      if (result.isSuccess()) {
+        // 保存原来的 socket
+        Socket originalMainSocket = mainSocket;
+        Socket originalVideoSocket = videoSocket;
+        
+        // 切换到直连
+        mainSocket = result.getMainSocket();
+        videoSocket = result.getVideoSocket();
+        mainOutputStream = mainSocket.getOutputStream();
+        mainDataInputStream = new DataInputStream(mainSocket.getInputStream());
+        videoDataInputStream = new DataInputStream(videoSocket.getInputStream());
+        
+        // 关闭原来的 socket
+        try { if (originalMainSocket != null) originalMainSocket.close(); } catch (Exception ignored) {}
+        try { if (originalVideoSocket != null) originalVideoSocket.close(); } catch (Exception ignored) {}
+        
+        connectDirect = true;
+        return true;
+      }
+    } catch (Exception e) {
+      android.util.Log.d("ClientStream", "P2P 直连失败: " + e.getMessage());
+    }
+    return false;
   }
 
   public String runShell(String cmd) throws Exception {

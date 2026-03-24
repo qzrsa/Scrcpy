@@ -66,11 +66,14 @@ public class StatsOverlay {
   
   /**
    * 设置连接模式
-   * @param mode 连接模式：0=ADB, 1=中继模式
+   * @param mode 连接模式：0=ADB, 1=中继模式, 2=直连
    */
   public void setConnectionMode(int mode) {
     this.connectionMode = mode;
     switch (mode) {
+      case Device.CONNECTION_MODE_DIRECT:
+        this.connectionModeStr = "直连";
+        break;
       case Device.CONNECTION_MODE_RELAY:
         this.connectionModeStr = "中继";
         break;

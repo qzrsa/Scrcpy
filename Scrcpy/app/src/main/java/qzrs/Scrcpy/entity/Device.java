@@ -6,9 +6,10 @@ public class Device {
   public static final int TYPE_NETWORK = 1;
   public static final int TYPE_LINK = 2;
   
-  // 连接模式：0=默认(ADB), 1=中继模式
+  // 连接模式：0=默认(ADB), 1=中继模式, 2=直连(P2P)
   public static final int CONNECTION_MODE_DEFAULT = 0;
   public static final int CONNECTION_MODE_RELAY = 1;
+  public static final int CONNECTION_MODE_DIRECT = 2;
   
   public final String uuid;
   public final int type;
