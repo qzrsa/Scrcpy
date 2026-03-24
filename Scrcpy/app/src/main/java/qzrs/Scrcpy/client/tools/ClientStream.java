@@ -135,6 +135,12 @@ public class ClientStream {
     int reTry = 40;
     int reTryTime = timeoutDelay / reTry;
     
+    // 同时输出到 Android 日志（logcat 可看）
+    android.util.Log.i("ClientStream", "========== 开始连接 ==========");
+    android.util.Log.i("ClientStream", "连接模式: " + device.connectionMode + " (" + (device.connectionMode == Device.CONNECTION_MODE_RELAY ? "中继模式" : "默认模式") + ")");
+    android.util.Log.i("ClientStream", "中继服务器: " + device.relayServer + ":" + device.relayPort);
+    android.util.Log.i("ClientStream", "设备UUID: " + device.uuid);
+    
     LogHelper.i("ClientStream", "========== 开始连接 ==========");
     LogHelper.i("ClientStream", "连接模式: " + device.connectionMode + " (" + (device.connectionMode == Device.CONNECTION_MODE_RELAY ? "中继模式" : "默认模式") + ")");
     LogHelper.i("ClientStream", "中继服务器: " + device.relayServer + ":" + device.relayPort);
@@ -142,10 +148,12 @@ public class ClientStream {
     
     // 根据连接模式选择连接方式
     if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
+      android.util.Log.i("ClientStream", "使用中继模式连接...");
       LogHelper.i("ClientStream", "使用中继模式连接...");
       // 中继模式：同时尝试直连和中继，谁先成功用谁
       connectRelay(device, reTry, reTryTime);
     } else {
+      android.util.Log.i("ClientStream", "使用默认模式(ADB)连接...");
       LogHelper.i("ClientStream", "使用默认模式(ADB)连接...");
       // 默认模式 (ADB 连接)
       connectDefault(device, reTry, reTryTime);
