@@ -31,6 +31,7 @@ public class SimpleRelay {
             try {
                 Socket socket = serverSocket.accept();
                 socket.setTcpNoDelay(true);
+                socket.setSoTimeout(60000); // 1分钟超时
                 new Thread(() -> handleConnection(socket)).start();
             } catch (SocketException e) {}
         }
@@ -39,7 +40,8 @@ public class SimpleRelay {
     private void handleConnection(Socket socket) {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            OutputStream out = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+            
             String line = reader.readLine();
             if (line == null) { socket.close(); return; }
             
@@ -47,43 +49,59 @@ public class SimpleRelay {
             String cmd = parts[0].toUpperCase();
             
             System.out.println("[收到] " + cmd + " " + (parts.length > 1 ? parts[1] : ""));
+            System.out.println("[原始] " + line);
             
             if (cmd.equals("AUTH") || cmd.equals("REGISTER")) {
-                handleAuth(parts, socket, out);
+                handleAuth(parts, socket, writer);
             } else if (cmd.equals("CONNECT")) {
-                handleConnect(parts, socket, out);
+                handleConnect(parts, socket, writer);
             } else if (cmd.equals("PING")) {
-                out.write("PONG\n".getBytes());
-                out.flush();
+                writer.println("PONG");
             } else {
-                out.write("ERROR\n".getBytes());
-                out.flush();
+                writer.println("ERROR");
                 socket.close();
             }
+        } catch (SocketTimeoutException e) {
+            System.out.println("[超时] 连接超时，关闭");
+            try { socket.close(); } catch (Exception ignored) {}
         } catch (IOException e) {
+            System.out.println("[异常] " + e.getMessage());
             try { socket.close(); } catch (Exception ignored) {}
         }
     }
     
-    private void handleAuth(String[] parts, Socket socket, OutputStream out) throws IOException {
-        if (parts.length < 2) { out.write("ERROR\n".getBytes()); out.flush(); socket.close(); return; }
+    private void handleAuth(String[] parts, Socket socket, PrintWriter out) throws IOException {
+        if (parts.length < 2) { 
+            out.println("ERROR"); 
+            socket.close(); 
+            return; 
+        }
         
         String uuid = parts[1];
         System.out.println("[认证] 设备: " + uuid);
         
-        devices.put(uuid, new DeviceInfo(uuid, socket));
-        out.write("OK\n".getBytes());
+        devices.put(uuid, new DeviceInfo(uuid, socket, out));
+        
+        // 发送 OK 响应
+        out.println("OK");
         out.flush();
         
-        // 保持连接
+        System.out.println("[发送] OK");
+        
+        // 保持连接，等待控制端
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             while (running && !socket.isClosed()) {
                 String line = reader.readLine();
                 if (line == null) break;
-                if (line.startsWith("PING")) out.write("PONG\n".getBytes());
-                out.flush();
+                System.out.println("[设备消息] " + line);
+                if (line.startsWith("PING")) {
+                    out.println("PONG");
+                    out.flush();
+                }
             }
+        } catch (SocketException e) {
+            System.out.println("[设备断开] " + e.getMessage());
         } finally {
             devices.remove(uuid);
             System.out.println("[断开] 设备: " + uuid);
@@ -91,8 +109,12 @@ public class SimpleRelay {
         }
     }
     
-    private void handleConnect(String[] parts, Socket socket, OutputStream out) throws IOException {
-        if (parts.length < 2) { out.write("ERROR\n".getBytes()); out.flush(); socket.close(); return; }
+    private void handleConnect(String[] parts, Socket socket, PrintWriter out) throws IOException {
+        if (parts.length < 2) { 
+            out.println("ERROR"); 
+            socket.close(); 
+            return; 
+        }
         
         String uuid = parts[1];
         String type = parts.length > 2 ? parts[2] : "MAIN";
@@ -100,19 +122,20 @@ public class SimpleRelay {
         
         DeviceInfo device = devices.get(uuid);
         if (device == null) {
-            out.write("ERROR Device not found\n".getBytes());
-            out.flush();
+            out.println("ERROR Device not found");
             socket.close();
             return;
         }
         
-        // 通知设备
-        device.out.write("CONNECTED\n".getBytes());
-        device.out.flush();
+        // 通知设备有控制端连接
+        device.writer.println("CONNECTED");
+        device.writer.flush();
+        System.out.println("[通知设备] CONNECTED");
         
-        // 告诉客户端连接成功
-        out.write("CONNECTED\n".getBytes());
+        // 告诉控制端连接成功
+        out.println("CONNECTED");
         out.flush();
+        System.out.println("[发送] CONNECTED");
         
         // 转发数据
         pipe(socket, device.socket, type);
@@ -136,7 +159,8 @@ public class SimpleRelay {
         } catch (Exception e) {
             System.err.println("[转发] " + type + " 异常: " + e.getMessage());
         } finally {
-            try { a.close(); b.close(); } catch (Exception ignored) {}
+            try { a.close(); } catch (Exception ignored) {}
+            try { b.close(); } catch (Exception ignored) {}
             System.out.println("[转发] " + type + " 结束");
         }
     }
@@ -144,11 +168,11 @@ public class SimpleRelay {
     class DeviceInfo {
         String uuid;
         Socket socket;
-        OutputStream out;
-        DeviceInfo(String uuid, Socket socket) {
+        PrintWriter writer;
+        DeviceInfo(String uuid, Socket socket, PrintWriter writer) {
             this.uuid = uuid;
             this.socket = socket;
-            try { this.out = socket.getOutputStream(); } catch (IOException e) {}
+            this.writer = writer;
         }
     }
 }

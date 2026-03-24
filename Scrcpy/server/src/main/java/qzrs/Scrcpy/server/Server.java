@@ -153,7 +153,7 @@ public final class Server {
       java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(relaySocket.getInputStream()));
       
       // 发送注册请求
-      String registerRequest = "REGISTER " + Options.deviceUUID + " " + Options.relayToken + "\n";
+      String registerRequest = "AUTH " + Options.deviceUUID + " " + Options.relayToken + "\n";
       out.write(registerRequest.getBytes());
       out.flush();
       
@@ -169,7 +169,7 @@ public final class Server {
         String mainResponse = in.readLine();
         String videoResponse = in.readLine();
         
-        if (mainResponse != null && mainResponse.startsWith("CONNECT MAIN")) {
+        if (mainResponse != null && mainResponse.startsWith("CONNECTED")) {
           mainSocket = relaySocket;
           mainOutputStream = out;
           mainInputStream = new DataInputStream(relaySocket.getInputStream());
