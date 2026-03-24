@@ -102,14 +102,11 @@ public class ClientStream {
     int reTryTime = timeoutDelay / reTry;
     
     // 根据连接模式选择连接方式
-    if (device.connectionMode == Device.CONNECTION_MODE_P2P) {
-      // P2P 直连模式
-      connectP2P(device, reTry, reTryTime);
-    } else if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
-      // 中继模式
+    if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
+      // 中继模式（会自动尝试直连，失败后回退到中继）
       connectRelay(device, reTry, reTryTime);
     } else {
-      // 默认模式 (原有逻辑)
+      // 默认模式 (ADB 连接)
       connectDefault(device, reTry, reTryTime);
     }
   }

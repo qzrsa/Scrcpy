@@ -54,7 +54,7 @@ public class DeviceDetailActivity extends Activity {
   private static final String[] maxFpsList = new String[]{"90", "60", "40", "30", "20", "10"};
   private static final String[] maxVideoBitList = new String[]{"12", "8", "4", "2", "1"};
   // 连接模式选项
-  private static final String[] connectionModeList = new String[]{"默认模式 (ADB)", "P2P 直连", "中继模式"};
+  private static final String[] connectionModeList = new String[]{"默认模式 (ADB)", "中继模式"};
 
   private void drawUI() {
     // UUID
@@ -82,7 +82,7 @@ public class DeviceDetailActivity extends Activity {
         device.connectionMode = position;
         // 根据模式显示/隐藏 P2P/中继配置
         activityDeviceDetailBinding.layoutP2pRelayConfig.setVisibility(
-          position == Device.CONNECTION_MODE_P2P || position == Device.CONNECTION_MODE_RELAY ? View.VISIBLE : View.GONE);
+          position == Device.CONNECTION_MODE_RELAY ? View.VISIBLE : View.GONE);
       }
       @Override
       public void onNothingSelected(android.widget.AdapterView<?> parent) {}
@@ -99,7 +99,7 @@ public class DeviceDetailActivity extends Activity {
     
     // 根据模式显示/隐藏 P2P/中继配置
     activityDeviceDetailBinding.layoutP2pRelayConfig.setVisibility(
-      device.connectionMode == Device.CONNECTION_MODE_P2P || device.connectionMode == Device.CONNECTION_MODE_RELAY ? View.VISIBLE : View.GONE);
+      device.connectionMode == Device.CONNECTION_MODE_RELAY ? View.VISIBLE : View.GONE);
     
     // 连接时操作
     activityDeviceDetailBinding.layoutOnConnect.setOnClickListener(v -> activityDeviceDetailBinding.layoutOnConnectSub.setVisibility(activityDeviceDetailBinding.layoutOnConnectSub.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
