@@ -41,6 +41,9 @@
       android:name=".IpActivity"
       android:exported="false" />
     <activity
+      android:name=".ServerListenActivity"
+      android:exported="false" />
+    <activity
       android:name=".client.view.FullActivity"
       android:exported="false" />
     <activity

@@ -53,6 +53,18 @@
   <FrameLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+    
+    <!-- 无 ADB 直连按钮 -->
+    <ImageView
+      android:id="@+id/button_server_listen"
+      android:layout_width="45dp"
+      android:layout_height="45dp"
+      android:layout_gravity="top|end"
+      android:layout_margin="16dp"
+      android:padding="10dp"
+      android:src="@drawable/wifi"
+      android:tint="@color/cyan"
+      android:contentDescription="无ADB直连" />
 
     <ImageView
       android:layout_width="match_parent"
