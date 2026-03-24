@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import qzrs.Scrcpy.helper.LogHelper;
+
 /**
  * 中转模式连接器 - 客户端侧
  * 

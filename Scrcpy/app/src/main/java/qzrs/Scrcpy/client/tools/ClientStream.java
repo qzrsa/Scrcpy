@@ -19,6 +19,7 @@ import qzrs.Scrcpy.connection.RelayClientConnector;
 import qzrs.Scrcpy.entity.AppData;
 import qzrs.Scrcpy.entity.Device;
 import qzrs.Scrcpy.entity.MyInterface;
+import qzrs.Scrcpy.helper.LogHelper;
 import qzrs.Scrcpy.helper.PublicTools;
 
 public class ClientStream {
@@ -91,7 +92,12 @@ public class ClientStream {
   }
 
   private void startServer(Device device) throws Exception {
+    LogHelper.i("ClientStream", "========== 开始启动 Server ==========");
+    LogHelper.i("ClientStream", "设备: " + device.name + ", 地址: " + device.address + ":" + device.serverPort);
+    LogHelper.i("ClientStream", "连接模式: " + (device.connectionMode == Device.CONNECTION_MODE_RELAY ? "中继模式" : "默认模式(ADB)"));
+    
     if (BuildConfig.ENABLE_DEBUG_FEATURE || !adb.runAdbCmd("ls /data/local/tmp/scrcpy_*").contains(serverName)) {
+      LogHelper.i("ClientStream", "推送 Server 到被控端: " + serverName);
       adb.runAdbCmd("rm /data/local/tmp/scrcpy_* ");
       adb.pushFile(AppData.applicationContext.getResources().openRawResource(R.raw.scrcpy_server), serverName, null);
     }
@@ -116,10 +122,12 @@ public class ClientStream {
       cmd.append(" relayServer=").append(device.relayServer);
       cmd.append(" relayPort=").append(device.relayPort);
       cmd.append(" relayToken=").append(device.relayToken);
+      LogHelper.i("ClientStream", "中继模式参数 - UUID: " + device.uuid + ", 服务器: " + device.relayServer + ":" + device.relayPort);
     }
     
     cmd.append(" \n");
     shell.write(ByteBuffer.wrap(cmd.toString().getBytes()));
+    LogHelper.i("ClientStream", "Server 启动命令已发送");
   }
 
   private void connectServer(Device device) throws Exception {
@@ -127,16 +135,18 @@ public class ClientStream {
     int reTry = 40;
     int reTryTime = timeoutDelay / reTry;
     
-    // 调试日志
-    android.util.Log.d("ClientStream", "连接模式: " + device.connectionMode + ", 中继服务器: " + device.relayServer + ":" + device.relayPort);
+    LogHelper.i("ClientStream", "========== 开始连接 ==========");
+    LogHelper.i("ClientStream", "连接模式: " + device.connectionMode + " (" + (device.connectionMode == Device.CONNECTION_MODE_RELAY ? "中继模式" : "默认模式") + ")");
+    LogHelper.i("ClientStream", "中继服务器: " + device.relayServer + ":" + device.relayPort);
+    LogHelper.i("ClientStream", "设备UUID: " + device.uuid);
     
     // 根据连接模式选择连接方式
     if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
-      android.util.Log.d("ClientStream", "使用中继模式连接");
+      LogHelper.i("ClientStream", "使用中继模式连接...");
       // 中继模式：同时尝试直连和中继，谁先成功用谁
       connectRelay(device, reTry, reTryTime);
     } else {
-      android.util.Log.d("ClientStream", "使用默认模式连接");
+      LogHelper.i("ClientStream", "使用默认模式(ADB)连接...");
       // 默认模式 (ADB 连接)
       connectDefault(device, reTry, reTryTime);
     }
@@ -221,27 +231,34 @@ public class ClientStream {
    * 通过中继服务器建立连接
    */
   private void connectRelay(Device device, int reTry, int reTryTime) throws Exception {
+    LogHelper.i("ClientStream", "正在连接中继服务器: " + device.relayServer + ":" + device.relayPort);
+    LogHelper.i("ClientStream", "设备UUID: " + device.uuid);
+    
     try {
       ConnectionConfig config = device.createConnectionConfig();
       RelayClientConnector relayConnector = new RelayClientConnector(config);
+      
+      LogHelper.i("ClientStream", "开始建立中继连接...");
       ConnectionResult result = relayConnector.connect(device.uuid);
       
       if (result.isSuccess()) {
+        LogHelper.i("ClientStream", "中继连接成功！");
         mainSocket = result.getMainSocket();
         videoSocket = result.getVideoSocket();
         mainOutputStream = result.getMainOutputStream();
         mainDataInputStream = new DataInputStream(mainSocket.getInputStream());
         videoDataInputStream = new DataInputStream(videoSocket.getInputStream());
         connectDirect = false; // 经过中继
+        LogHelper.i("ClientStream", "连接建立完成，准备接收数据");
         return;
       } else {
         // 中继失败，回退到默认模式
-        android.util.Log.w("ClientStream", "Relay connection failed, falling back to default: " + result.getErrorMessage());
+        LogHelper.e("ClientStream", "中继连接失败: " + result.getErrorMessage() + "，回退到默认模式");
         connectDefault(device, reTry, reTryTime);
       }
     } catch (Exception e) {
       // 中继异常，回退到默认模式
-      android.util.Log.w("ClientStream", "Relay exception, falling back to default: " + e.getMessage());
+      LogHelper.e("ClientStream", "中继连接异常: " + e.getMessage() + "，回退到默认模式");
       connectDefault(device, reTry, reTryTime);
     }
   }
