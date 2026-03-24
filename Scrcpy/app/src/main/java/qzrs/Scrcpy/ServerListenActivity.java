@@ -4,13 +4,15 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.os.Bundle;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import qzrs.Scrcpy.databinding.ActivityServerListenBinding;
 import qzrs.Scrcpy.entity.AppData;
 import qzrs.Scrcpy.helper.LogHelper;
 import qzrs.Scrcpy.helper.PublicTools;
@@ -23,7 +25,13 @@ import qzrs.Scrcpy.server.Server;
  */
 public class ServerListenActivity extends Activity {
     
-    private ActivityServerListenBinding binding;
+    private ImageButton backButton;
+    private ImageButton copyButton;
+    private Button startButton;
+    private TextView ipAddress;
+    private TextView statusText;
+    private View statusIndicator;
+    
     private ExecutorService executorService;
     private boolean isListening = false;
     
@@ -32,12 +40,21 @@ public class ServerListenActivity extends Activity {
         super.onCreate(savedInstanceState);
         ViewTools.setStatusAndNavBar(this);
         ViewTools.setLocale(this);
-        binding = ActivityServerListenBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        setContentView(R.layout.activity_server_listen);
         
+        initViews();
         executorService = Executors.newSingleThreadExecutor();
         showLocalIp();
         setButtonListener();
+    }
+    
+    private void initViews() {
+        backButton = findViewById(R.id.back_button);
+        copyButton = findViewById(R.id.copy_button);
+        startButton = findViewById(R.id.start_button);
+        ipAddress = findViewById(R.id.ip_address);
+        statusText = findViewById(R.id.status_text);
+        statusIndicator = findViewById(R.id.status_indicator);
     }
     
     private void showLocalIp() {
@@ -61,20 +78,20 @@ public class ServerListenActivity extends Activity {
                 }
             }
             
-            binding.ipAddress.setText(sb.toString().trim());
+            ipAddress.setText(sb.toString().trim());
         } catch (Exception e) {
             LogHelper.e("ServerListen", "获取IP失败", e);
-            binding.ipAddress.setText("获取失败");
+            ipAddress.setText("获取失败");
         }
     }
     
     private void setButtonListener() {
-        binding.backButton.setOnClickListener(v -> {
+        backButton.setOnClickListener(v -> {
             stopListening();
             finish();
         });
         
-        binding.startButton.setOnClickListener(v -> {
+        startButton.setOnClickListener(v -> {
             if (isListening) {
                 stopListening();
             } else {
@@ -82,9 +99,9 @@ public class ServerListenActivity extends Activity {
             }
         });
         
-        binding.copyButton.setOnClickListener(v -> {
+        copyButton.setOnClickListener(v -> {
             try {
-                String ip = binding.ipAddress.getText().toString().trim();
+                String ip = ipAddress.getText().toString().trim();
                 String port = "25166";
                 String firstIp = ip.split("\n")[0].trim();
                 String connectionString = firstIp + ":" + port;
@@ -104,15 +121,14 @@ public class ServerListenActivity extends Activity {
         
         try {
             isListening = true;
-            binding.startButton.setEnabled(false);
-            binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
-            binding.statusText.setText("正在启动 Server...");
+            startButton.setEnabled(false);
+            statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
+            statusText.setText("正在启动 Server...");
             
             // 在后台线程启动 Server
             executorService.execute(() -> {
                 try {
                     // 调用 Server.main() 启动 server
-                    // Server 会自动监听 serverPort (默认 25166)
                     String[] args = {
                         "serverPort=25166",
                         "listenerClip=1",
@@ -126,13 +142,13 @@ public class ServerListenActivity extends Activity {
                     };
                     
                     runOnUiThread(() -> {
-                        binding.statusText.setText("Server 已启动\n等待控制端连接...");
-                        binding.startButtonText.setText("停止");
-                        binding.startButton.setEnabled(true);
+                        statusText.setText("Server 已启动\n等待控制端连接...");
+                        startButton.setText("停止");
+                        startButton.setEnabled(true);
                         
                         // 复制到剪贴板
                         try {
-                            String ip = binding.ipAddress.getText().toString().split("\n")[0].trim();
+                            String ip = ipAddress.getText().toString().split("\n")[0].trim();
                             String connectionString = ip + ":25166";
                             AppData.clipBoard.setPrimaryClip(
                                 ClipData.newPlainText(ClipDescription.MIMETYPE_TEXT_PLAIN, connectionString)
@@ -151,10 +167,10 @@ public class ServerListenActivity extends Activity {
                 } catch (Exception e) {
                     LogHelper.e("ServerListen", "Server 启动失败", e);
                     runOnUiThread(() -> {
-                        binding.statusText.setText("启动失败: " + e.getMessage());
-                        binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
-                        binding.startButtonText.setText("启动");
-                        binding.startButton.setEnabled(true);
+                        statusText.setText("启动失败: " + e.getMessage());
+                        statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
+                        startButton.setText("启动");
+                        startButton.setEnabled(true);
                         isListening = false;
                     });
                 }
@@ -162,9 +178,9 @@ public class ServerListenActivity extends Activity {
             
         } catch (Exception e) {
             isListening = false;
-            binding.startButton.setEnabled(true);
-            binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
-            binding.statusText.setText("启动失败: " + e.getMessage());
+            startButton.setEnabled(true);
+            statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
+            statusText.setText("启动失败: " + e.getMessage());
             LogHelper.e("ServerListen", "启动失败", e);
         }
     }
@@ -178,9 +194,9 @@ public class ServerListenActivity extends Activity {
             executorService = null;
         }
         
-        binding.statusText.setText("已停止");
-        binding.startButtonText.setText("启动");
-        binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
+        statusText.setText("已停止");
+        startButton.setText("启动");
+        statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
         
         LogHelper.i("ServerListen", "监听已停止");
     }
