@@ -116,7 +116,7 @@ public class ClientStream {
     
     // 根据连接模式选择连接方式
     if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
-      // 中继模式（会自动尝试直连，失败后回退到中继）
+      // 中继模式：同时尝试直连和中继，谁先成功用谁
       connectRelay(device, reTry, reTryTime);
     } else {
       // 默认模式 (ADB 连接)
