@@ -162,35 +162,33 @@ public final class Server {
       System.out.println("[Relay] 注册响应: " + response);
       
       if (response != null && response.startsWith("OK")) {
-        // 注册成功，等待连接
+        // 注册成功，阻塞等待中继服务器通知
         System.out.println("[Relay] 注册成功，等待控制端连接...");
         
-        // 读取主连接和视频连接
-        String mainResponse = in.readLine();
-        String videoResponse = in.readLine();
-        
-        if (mainResponse != null && mainResponse.startsWith("CONNECTED")) {
-          mainSocket = relaySocket;
-          mainOutputStream = out;
-          mainInputStream = new DataInputStream(relaySocket.getInputStream());
-          mainSocket.setTcpNoDelay(true);
+        // 阻塞等待中继服务器发送 CONNECTED 通知
+        // 使用 read() 而不是 readLine()，因为中继服务器可能发送 CONNECTED\n
+        int c;
+        StringBuilder sb = new StringBuilder();
+        while ((c = in.read()) != -1) {
+          if (c == '\n' || c == '\r') {
+            // 收到完整一行
+            String line = sb.toString().trim();
+            System.out.println("[Relay] 收到: " + line);
+            
+            if (line.startsWith("CONNECTED")) {
+              // 控制端已连接，设置 socket
+              mainSocket = relaySocket;
+              mainOutputStream = out;
+              mainInputStream = new DataInputStream(relaySocket.getInputStream());
+              mainSocket.setTcpNoDelay(true);
+              System.out.println("[Relay] 控制端已连接");
+              break;
+            }
+            sb.setLength(0); // 清空buffer
+          } else {
+            sb.append((char) c);
+          }
         }
-        
-        if (videoResponse != null && videoResponse.startsWith("CONNECT VIDEO")) {
-          // 创建独立的视频连接
-          java.net.Socket videoRelaySocket = new java.net.Socket();
-          videoRelaySocket.connect(new java.net.InetSocketAddress(Options.relayServer, Options.relayPort), 10000);
-          
-          String videoConnectRequest = "CONNECT " + Options.deviceUUID + " VIDEO\n";
-          videoRelaySocket.getOutputStream().write(videoConnectRequest.getBytes());
-          videoRelaySocket.getOutputStream().flush();
-          
-          videoSocket = videoRelaySocket;
-          videoOutputStream = videoRelaySocket.getOutputStream();
-          videoSocket.setTcpNoDelay(true);
-        }
-        
-        System.out.println("[Relay] 控制端已连接");
       } else {
         throw new IOException("中继注册失败: " + response);
       }
