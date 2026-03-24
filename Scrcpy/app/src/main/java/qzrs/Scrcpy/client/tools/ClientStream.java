@@ -289,9 +289,11 @@ public class ClientStream {
       ConnectionResult result = p2pConnector.connect(serverAddress, serverPort);
       
       if (result.isSuccess()) {
-        // 保存原来的 socket
+        // 保存原来的 socket 和 stream
         Socket originalMainSocket = mainSocket;
         Socket originalVideoSocket = videoSocket;
+        BufferStream originalMainBuffer = mainBufferStream;
+        BufferStream originalVideoBuffer = videoBufferStream;
         
         // 切换到直连
         mainSocket = result.getMainSocket();
@@ -300,11 +302,18 @@ public class ClientStream {
         mainDataInputStream = new DataInputStream(mainSocket.getInputStream());
         videoDataInputStream = new DataInputStream(videoSocket.getInputStream());
         
-        // 关闭原来的 socket
+        // 清空 BufferStream 引用（已切换到直连模式）
+        mainBufferStream = null;
+        videoBufferStream = null;
+        
+        // 关闭原来的连接
         try { if (originalMainSocket != null) originalMainSocket.close(); } catch (Exception ignored) {}
         try { if (originalVideoSocket != null) originalVideoSocket.close(); } catch (Exception ignored) {}
+        try { if (originalMainBuffer != null) originalMainBuffer.close(); } catch (Exception ignored) {}
+        try { if (originalVideoBuffer != null) originalVideoBuffer.close(); } catch (Exception ignored) {}
         
         connectDirect = true;
+        android.util.Log.i("ClientStream", "P2P 直连切换成功，已关闭中继连接");
         return true;
       }
     } catch (Exception e) {
