@@ -42,7 +42,10 @@ public class AppData {
     applicationContext = m.getApplicationContext();
     uiHandler = new android.os.Handler(m.getMainLooper());
     
-    // 初始化日志系统
+    // 必须先初始化 setting，因为 LogHelper.init 需要读取日志开关
+    setting = new Setting(applicationContext.getSharedPreferences("setting", Context.MODE_PRIVATE));
+    
+    // 初始化日志系统（在 setting 之后）
     LogHelper.init(applicationContext);
     
     dbHelper = new DbHelper(applicationContext);
@@ -51,7 +54,7 @@ public class AppData {
     usbManager = (UsbManager) applicationContext.getSystemService(Context.USB_SERVICE);
     windowManager = (WindowManager) applicationContext.getSystemService(Context.WINDOW_SERVICE);
     sensorManager = (SensorManager) applicationContext.getSystemService(Context.SENSOR_SERVICE);
-    setting = new Setting(applicationContext.getSharedPreferences("setting", Context.MODE_PRIVATE));
+    
     // 读取密钥
     keyPair = PublicTools.readAdbKeyPair();
     

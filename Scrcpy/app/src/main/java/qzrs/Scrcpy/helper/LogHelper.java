@@ -64,10 +64,15 @@ public class LogHelper {
     public static void init(Context context) {
         // 读取日志开关设置
         try {
-            logEnabled = qzrs.Scrcpy.entity.AppData.setting.getLogEnabled();
+            boolean enabled = qzrs.Scrcpy.entity.AppData.setting.getLogEnabled();
+            logEnabled = enabled;
+            android.util.Log.d("LogHelper", "日志开关读取成功: " + enabled);
         } catch (Exception e) {
+            android.util.Log.e("LogHelper", "日志开关读取失败: " + e.getMessage());
             logEnabled = false;
         }
+        
+        android.util.Log.d("LogHelper", "当前日志开关状态: " + logEnabled);
         
         logDir = getLogDirectory(context);
         
