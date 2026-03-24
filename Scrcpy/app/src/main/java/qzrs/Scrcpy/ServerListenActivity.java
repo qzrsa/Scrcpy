@@ -4,24 +4,25 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import qzrs.Scrcpy.entity.AppData;
 import qzrs.Scrcpy.helper.LogHelper;
 import qzrs.Scrcpy.helper.PublicTools;
 import qzrs.Scrcpy.helper.ViewTools;
-import qzrs.Scrcpy.server.Server;
 
 /**
  * 无 ADB 直连模式 - 被控端启动 Server 监听
- * 用户点击"启动"后，Server 开始监听端口，等待控制端连接
+ * 用户点击"启动"后，使用 app_process 启动 Server 监听端口
  */
 public class ServerListenActivity extends Activity {
     
@@ -30,10 +31,12 @@ public class ServerListenActivity extends Activity {
     private Button startButton;
     private TextView ipAddress;
     private TextView statusText;
-    private View statusIndicator;
+    private android.view.View statusIndicator;
     
-    private ExecutorService executorService;
+    private HandlerThread workerThread;
+    private Handler workerHandler;
     private boolean isListening = false;
+    private Process serverProcess;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,8 +45,11 @@ public class ServerListenActivity extends Activity {
         ViewTools.setLocale(this);
         setContentView(R.layout.activity_server_listen);
         
+        workerThread = new HandlerThread("ServerWorker");
+        workerThread.start();
+        workerHandler = new Handler(workerThread.getLooper());
+        
         initViews();
-        executorService = Executors.newSingleThreadExecutor();
         showLocalIp();
         setButtonListener();
     }
@@ -126,43 +132,35 @@ public class ServerListenActivity extends Activity {
             statusText.setText("正在启动 Server...");
             
             // 在后台线程启动 Server
-            executorService.execute(() -> {
+            workerHandler.post(() -> {
                 try {
-                    // 调用 Server.main() 启动 server
-                    String[] args = {
-                        "serverPort=25166",
-                        "listenerClip=1",
-                        "isAudio=1",
-                        "maxSize=1600",
-                        "maxFps=60",
-                        "maxVideoBit=4",
-                        "keepAwake=1",
-                        "supportH265=1",
-                        "supportOpus=1"
-                    };
+                    // 复制 server jar 到数据目录
+                    copyServerToDataDir();
                     
-                    runOnUiThread(() -> {
-                        statusText.setText("Server 已启动\n等待控制端连接...");
-                        startButton.setText("停止");
-                        startButton.setEnabled(true);
-                        
-                        // 复制到剪贴板
-                        try {
-                            String ip = ipAddress.getText().toString().split("\n")[0].trim();
-                            String connectionString = ip + ":25166";
-                            AppData.clipBoard.setPrimaryClip(
-                                ClipData.newPlainText(ClipDescription.MIMETYPE_TEXT_PLAIN, connectionString)
-                            );
-                            Toast.makeText(this, "已启动，地址已复制", Toast.LENGTH_SHORT).show();
-                        } catch (Exception e) {
-                            LogHelper.e("ServerListen", "复制失败", e);
-                        }
-                    });
+                    // 使用 app_process 启动 Server
+                    String serverPath = "/data/local/tmp/scrcpy_server.jar";
+                    String cmd = "app_process -Djava.class.path=" + serverPath + " / qzrs.Scrcpy.server.Server"
+                        + " serverPort=25166"
+                        + " listenerClip=1"
+                        + " isAudio=1"
+                        + " maxSize=1600"
+                        + " maxFps=60"
+                        + " maxVideoBit=4"
+                        + " keepAwake=1"
+                        + " supportH265=1"
+                        + " supportOpus=1";
                     
-                    LogHelper.i("ServerListen", "Server 启动成功，等待连接...");
+                    LogHelper.i("ServerListen", "执行命令: " + cmd);
                     
-                    // 调用 Server.main() 启动（会阻塞直到连接）
-                    Server.main(args);
+                    Runtime runtime = Runtime.getRuntime();
+                    serverProcess = runtime.exec("su -c " + cmd);
+                    
+                    // 读取输出
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(serverProcess.getInputStream()));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        LogHelper.i("ServerListen", "Server: " + line);
+                    }
                     
                 } catch (Exception e) {
                     LogHelper.e("ServerListen", "Server 启动失败", e);
@@ -176,6 +174,27 @@ public class ServerListenActivity extends Activity {
                 }
             });
             
+            // 延迟更新 UI
+            new Handler().postDelayed(() -> {
+                if (isListening) {
+                    statusText.setText("Server 已启动\n等待控制端连接...");
+                    startButton.setText("停止");
+                    startButton.setEnabled(true);
+                    
+                    // 复制到剪贴板
+                    try {
+                        String ip = ipAddress.getText().toString().split("\n")[0].trim();
+                        String connectionString = ip + ":25166";
+                        AppData.clipBoard.setPrimaryClip(
+                            ClipData.newPlainText(ClipDescription.MIMETYPE_TEXT_PLAIN, connectionString)
+                        );
+                        Toast.makeText(this, "已启动，地址已复制", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        LogHelper.e("ServerListen", "复制失败", e);
+                    }
+                }
+            }, 3000);
+            
         } catch (Exception e) {
             isListening = false;
             startButton.setEnabled(true);
@@ -185,13 +204,34 @@ public class ServerListenActivity extends Activity {
         }
     }
     
+    private void copyServerToDataDir() throws Exception {
+        // 确保目标目录存在
+        Runtime.getRuntime().exec("su -c mkdir -p /data/local/tmp");
+        
+        // 从 resources 复制 server jar
+        java.io.InputStream is = getResources().openRawResource(R.raw.scrcpy_server);
+        java.io.FileOutputStream fos = new java.io.FileOutputStream("/data/local/tmp/scrcpy_server.jar");
+        byte[] buffer = new byte[4096];
+        int len;
+        while ((len = is.read(buffer)) > 0) {
+            fos.write(buffer, 0, len);
+        }
+        fos.close();
+        is.close();
+        
+        // 设置权限
+        Runtime.getRuntime().exec("su -c chmod 777 /data/local/tmp/scrcpy_server.jar");
+        
+        LogHelper.i("ServerListen", "Server jar 已复制到 /data/local/tmp");
+    }
+    
     private void stopListening() {
         isListening = false;
         
-        // 关闭线程池
-        if (executorService != null) {
-            executorService.shutdownNow();
-            executorService = null;
+        // 关闭进程
+        if (serverProcess != null) {
+            serverProcess.destroy();
+            serverProcess = null;
         }
         
         statusText.setText("已停止");
@@ -204,6 +244,9 @@ public class ServerListenActivity extends Activity {
     @Override
     protected void onDestroy() {
         stopListening();
+        if (workerThread != null) {
+            workerThread.quitSafely();
+        }
         super.onDestroy();
     }
 }
