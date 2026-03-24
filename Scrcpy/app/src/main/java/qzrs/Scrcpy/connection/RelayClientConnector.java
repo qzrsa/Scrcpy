@@ -61,12 +61,14 @@ public class RelayClientConnector {
             String token = config.getRelayToken();
             
             if (relayServer == null || relayServer.isEmpty()) {
+                LogHelper.e("RelayClient", "中继服务器未配置");
                 return ConnectionResult.fail("No relay server configured");
             }
             
-            Log.d(TAG, "Connecting to relay server: " + relayServer + ":" + relayPort);
+            LogHelper.i("RelayClient", "正在连接中继服务器: " + relayServer + ":" + relayPort);
             
             // 步骤 1：建立到中继服务器的连接
+            LogHelper.i("RelayClient", "步骤1: 建立TCP连接...");
             mainSocket = new Socket();
             mainSocket.connect(new InetSocketAddress(relayServer, relayPort), 10000);
             mainSocket.setSoTimeout(30000);
@@ -75,45 +77,56 @@ public class RelayClientConnector {
             DataInputStream in = new DataInputStream(mainSocket.getInputStream());
             
             // 步骤 2：认证
+            LogHelper.i("RelayClient", "步骤2: 发送认证请求...");
             String authRequest = buildAuthRequest(deviceId, token);
+            LogHelper.d("RelayClient", "认证请求: " + authRequest.trim());
             out.write(authRequest.getBytes(StandardCharsets.UTF_8));
             out.flush();
             
             // 读取认证响应
             String authResponse = readLine(in);
+            LogHelper.d("RelayClient", "认证响应: " + authResponse);
             if (!authResponse.startsWith("OK")) {
+                LogHelper.e("RelayClient", "认证失败: " + authResponse);
                 return ConnectionResult.fail("Authentication failed: " + authResponse);
             }
             
-            Log.d(TAG, "Authentication successful");
+            LogHelper.i("RelayClient", "认证成功");
             
             // 步骤 3：请求连接到目标设备
+            LogHelper.i("RelayClient", "步骤3: 请求连接设备...");
             String connectRequest = "CONNECT " + deviceId + "\n";
+            LogHelper.d("RelayClient", "连接请求: " + connectRequest.trim());
             out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
             out.flush();
             
             // 读取连接响应
             String connectResponse = readLine(in);
+            LogHelper.d("RelayClient", "连接响应: " + connectResponse);
             if (!connectResponse.startsWith("CONNECTED")) {
+                LogHelper.e("RelayClient", "连接设备失败: " + connectResponse);
                 return ConnectionResult.fail("Failed to connect to device: " + connectResponse);
             }
             
-            Log.d(TAG, "Connected to device through relay");
+            LogHelper.i("RelayClient", "设备连接成功");
             
             // 步骤 4：建立视频连接（同一连接复用或新建）
-            videoSocket = new Socket();
+            LogHelper.i("RelayClient", "步骤4: 建立视频通道...");
             videoSocket.connect(new InetSocketAddress(relayServer, relayPort), 10000);
             
             DataOutputStream videoOut = new DataOutputStream(videoSocket.getOutputStream());
             DataInputStream videoIn = new DataInputStream(videoSocket.getInputStream());
             
             // 视频通道认证
+            LogHelper.i("RelayClient", "视频通道: 发送认证...");
             String videoAuthRequest = buildAuthRequest(deviceId, token);
             videoOut.write(videoAuthRequest.getBytes(StandardCharsets.UTF_8));
             videoOut.flush();
             
             String videoAuthResponse = readLine(videoIn);
+            LogHelper.d("RelayClient", "视频认证响应: " + videoAuthResponse);
             if (!videoAuthResponse.startsWith("OK")) {
+                LogHelper.e("RelayClient", "视频通道认证失败");
                 return ConnectionResult.fail("Video channel auth failed");
             }
             
@@ -123,11 +136,14 @@ public class RelayClientConnector {
             videoOut.flush();
             
             String videoConnectResponse = readLine(videoIn);
+            LogHelper.d("RelayClient", "视频连接响应: " + videoConnectResponse);
             if (!videoConnectResponse.startsWith("CONNECTED")) {
+                LogHelper.e("RelayClient", "视频通道连接失败");
                 return ConnectionResult.fail("Failed to establish video channel");
             }
             
             // 构建结果
+            LogHelper.i("RelayClient", "中继连接全部建立成功！");
             result = ConnectionResult.success(ConnectionMode.RELAY);
             result.setMainSocket(mainSocket);
             result.setMainInputStream(in);
