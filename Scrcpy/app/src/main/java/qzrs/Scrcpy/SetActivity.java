@@ -62,14 +62,16 @@ public class SetActivity extends Activity {
         // 显示日志内容对话框
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         builder.setTitle("日志内容");
-        builder.setMessage(content.length() > 5000 ? content.substring(0, 5000) + "\n\n... (内容过长，仅显示前5000字符)" : content);
+        String logContent = content.length() > 5000 ? content.substring(0, 5000) + "\n\n... (内容过长，仅显示前5000字符)" : content;
+        builder.setMessage(logContent);
         builder.setPositiveButton("确定", null);
+        final String finalContent = content;
         builder.setNeutralButton("分享", (dialog, which) -> {
           // 分享日志
           Intent shareIntent = new Intent(Intent.ACTION_SEND);
           shareIntent.setType("text/plain");
           shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Scrcpy 日志");
-          shareIntent.putExtra(Intent.EXTRA_TEXT, content);
+          shareIntent.putExtra(Intent.EXTRA_TEXT, finalContent);
           startActivity(Intent.createChooser(shareIntent, "分享日志"));
         });
         builder.show();
