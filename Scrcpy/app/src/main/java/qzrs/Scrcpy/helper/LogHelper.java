@@ -19,13 +19,13 @@ import java.util.Locale;
 
 /**
  * 日志工具类
- * - 每次启动创建1个日志文件
+ * - 每天创建1个日志文件
  * - 日志最多保存5个
  * - 自动清理多余的旧日志
  * 
  * 日志路径（按优先级）：
- * 1. 内部存储: /data/data/qzrs.Scrcpy/files/logs
- * 2. 外部存储: /storage/emulated/0/Android/data/qzrs.Scrcpy/files/logs
+ * 1. 外部存储: /storage/emulated/0/Android/data/qzrs.Scrcpy/files/logs
+ * 2. 内部存储: /data/data/qzrs.Scrcpy/files/logs
  */
 public class LogHelper {
     private static final String TAG = "Scrcpy";
@@ -112,21 +112,21 @@ public class LogHelper {
     }
     
     /**
-     * 获取日志目录（优先使用内部存储）
+     * 获取日志目录（优先使用外部存储的Android/data目录）
      */
     private static File getLogDirectory(Context context) {
-        // 优先尝试内部存储
-        File internalDir = getInternalLogDirectory(context);
-        if (canWrite(internalDir)) {
-            useInternalStorage = true;
-            return internalDir;
-        }
-        
-        // 内部存储不可用，尝试外部存储
+        // 优先使用外部存储的 Android/data 目录
         File externalDir = getExternalLogDirectory(context);
         if (canWrite(externalDir)) {
             useInternalStorage = false;
             return externalDir;
+        }
+        
+        // 外部存储不可用，使用内部存储
+        File internalDir = getInternalLogDirectory(context);
+        if (canWrite(internalDir)) {
+            useInternalStorage = true;
+            return internalDir;
         }
         
         // 都不可用，返回内部存储（会尝试创建）
