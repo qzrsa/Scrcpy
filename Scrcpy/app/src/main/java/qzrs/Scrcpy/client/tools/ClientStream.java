@@ -96,7 +96,9 @@ public class ClientStream {
       adb.pushFile(AppData.applicationContext.getResources().openRawResource(R.raw.scrcpy_server), serverName, null);
     }
     shell = adb.getShell();
-    shell.write(ByteBuffer.wrap(("app_process -Djava.class.path=" + serverName + " / qzrs.Scrcpy.server.Server"
+    
+    // 构建 Server 启动命令
+    StringBuilder cmd = new StringBuilder("app_process -Djava.class.path=" + serverName + " / qzrs.Scrcpy.server.Server"
       + " serverPort=" + device.serverPort
       + " listenClip=" + (device.listenClip ? 1 : 0)
       + " isAudio=" + (device.isAudio ? 1 : 0)
@@ -106,7 +108,18 @@ public class ClientStream {
       + " keepAwake=" + (device.keepWakeOnRunning ? 1 : 0)
       + " supportH265=" + ((device.useH265 && supportH265) ? 1 : 0)
       + " supportOpus=" + (supportOpus ? 1 : 0)
-      + " startApp=" + device.startApp + " \n").getBytes()));
+      + " startApp=" + device.startApp);
+    
+    // 中继模式参数
+    if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
+      cmd.append(" deviceUUID=").append(device.uuid);
+      cmd.append(" relayServer=").append(device.relayServer);
+      cmd.append(" relayPort=").append(device.relayPort);
+      cmd.append(" relayToken=").append(device.relayToken);
+    }
+    
+    cmd.append(" \n");
+    shell.write(ByteBuffer.wrap(cmd.toString().getBytes()));
   }
 
   private void connectServer(Device device) throws Exception {

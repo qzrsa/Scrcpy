@@ -119,14 +119,84 @@ public final class Server {
   }
 
   private static void connectClient() throws IOException {
-    try (ServerSocket serverSocket = new ServerSocket(Options.serverPort)) {
-      mainSocket = serverSocket.accept();
-      videoSocket = serverSocket.accept();
-      mainOutputStream = mainSocket.getOutputStream();
-      videoOutputStream = videoSocket.getOutputStream();
-      mainInputStream = new DataInputStream(mainSocket.getInputStream());
-      // 关闭TCP的Nagle算法，避免小包缓冲
-      mainSocket.setTcpNoDelay(true);
+    // 检查是否启用中继模式
+    if (Options.isRelayMode()) {
+      // 中继模式：通过中继服务器连接
+      connectViaRelay();
+    } else {
+      // 普通模式：直接监听端口
+      try (ServerSocket serverSocket = new ServerSocket(Options.serverPort)) {
+        mainSocket = serverSocket.accept();
+        videoSocket = serverSocket.accept();
+        mainOutputStream = mainSocket.getOutputStream();
+        videoOutputStream = videoSocket.getOutputStream();
+        mainInputStream = new DataInputStream(mainSocket.getInputStream());
+        // 关闭TCP的Nagle算法，避免小包缓冲
+        mainSocket.setTcpNoDelay(true);
+      }
+    }
+  }
+  
+  /**
+   * 通过中继服务器连接
+   */
+  private static void connectViaRelay() throws IOException {
+    System.out.println("[Relay] 连接到中继服务器: " + Options.relayServer + ":" + Options.relayPort);
+    System.out.println("[Relay] 设备UUID: " + Options.deviceUUID);
+    
+    try {
+      // 连接到中继服务器
+      java.net.Socket relaySocket = new java.net.Socket();
+      relaySocket.connect(new java.net.InetSocketAddress(Options.relayServer, Options.relayPort), 10000);
+      
+      java.io.OutputStream out = relaySocket.getOutputStream();
+      java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(relaySocket.getInputStream()));
+      
+      // 发送注册请求
+      String registerRequest = "REGISTER " + Options.deviceUUID + " " + Options.relayToken + "\n";
+      out.write(registerRequest.getBytes());
+      out.flush();
+      
+      // 等待注册响应
+      String response = in.readLine();
+      System.out.println("[Relay] 注册响应: " + response);
+      
+      if (response != null && response.startsWith("OK")) {
+        // 注册成功，等待连接
+        System.out.println("[Relay] 注册成功，等待控制端连接...");
+        
+        // 读取主连接和视频连接
+        String mainResponse = in.readLine();
+        String videoResponse = in.readLine();
+        
+        if (mainResponse != null && mainResponse.startsWith("CONNECT MAIN")) {
+          mainSocket = relaySocket;
+          mainOutputStream = out;
+          mainInputStream = new DataInputStream(relaySocket.getInputStream());
+          mainSocket.setTcpNoDelay(true);
+        }
+        
+        if (videoResponse != null && videoResponse.startsWith("CONNECT VIDEO")) {
+          // 创建独立的视频连接
+          java.net.Socket videoRelaySocket = new java.net.Socket();
+          videoRelaySocket.connect(new java.net.InetSocketAddress(Options.relayServer, Options.relayPort), 10000);
+          
+          String videoConnectRequest = "CONNECT " + Options.deviceUUID + " VIDEO\n";
+          videoRelaySocket.getOutputStream().write(videoConnectRequest.getBytes());
+          videoRelaySocket.getOutputStream().flush();
+          
+          videoSocket = videoRelaySocket;
+          videoOutputStream = videoRelaySocket.getOutputStream();
+          videoSocket.setTcpNoDelay(true);
+        }
+        
+        System.out.println("[Relay] 控制端已连接");
+      } else {
+        throw new IOException("中继注册失败: " + response);
+      }
+    } catch (Exception e) {
+      System.out.println("[Relay] 中继连接失败: " + e.getMessage());
+      throw new IOException("中继连接失败: " + e.getMessage());
     }
   }
 

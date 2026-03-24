@@ -14,6 +14,12 @@ public final class Options {
   public static boolean supportH265 = true;
   public static boolean supportOpus = true;
   public static String startApp = "";
+  
+  // 中继模式配置
+  public static String deviceUUID = "";  // 设备UUID，用于中继注册
+  public static String relayServer = "";  // 中继服务器地址
+  public static int relayPort = 3478;     // 中继服务器端口
+  public static String relayToken = "";   // 中继服务器Token
 
   public static void parse(String... args) {
     for (String arg : args) {
@@ -52,8 +58,26 @@ public final class Options {
         case "startApp":
           startApp = value;
           break;
+        case "deviceUUID":
+          deviceUUID = value;
+          break;
+        case "relayServer":
+          relayServer = value;
+          break;
+        case "relayPort":
+          relayPort = Integer.parseInt(value);
+          break;
+        case "relayToken":
+          relayToken = value;
+          break;
       }
     }
   }
+  
+  /**
+   * 检查是否启用中继模式
+   */
+  public static boolean isRelayMode() {
+    return relayServer != null && !relayServer.isEmpty();
+  }
 }
-
