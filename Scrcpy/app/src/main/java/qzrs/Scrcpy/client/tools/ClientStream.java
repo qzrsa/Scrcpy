@@ -127,11 +127,16 @@ public class ClientStream {
     int reTry = 40;
     int reTryTime = timeoutDelay / reTry;
     
+    // 调试日志
+    android.util.Log.d("ClientStream", "连接模式: " + device.connectionMode + ", 中继服务器: " + device.relayServer + ":" + device.relayPort);
+    
     // 根据连接模式选择连接方式
     if (device.connectionMode == Device.CONNECTION_MODE_RELAY) {
+      android.util.Log.d("ClientStream", "使用中继模式连接");
       // 中继模式：同时尝试直连和中继，谁先成功用谁
       connectRelay(device, reTry, reTryTime);
     } else {
+      android.util.Log.d("ClientStream", "使用默认模式连接");
       // 默认模式 (ADB 连接)
       connectDefault(device, reTry, reTryTime);
     }
