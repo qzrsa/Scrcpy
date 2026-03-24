@@ -38,5 +38,8 @@
   <color name="onColor8">#3A70FC</color>
   <color name="color9">#ECF9FF</color>
   <color name="onColor9">#10BEF1</color>
-
+  
+  <!-- 青色（用于强调） -->
+  <color name="cyan">#00BCD4</color>
+  
 </resources>
