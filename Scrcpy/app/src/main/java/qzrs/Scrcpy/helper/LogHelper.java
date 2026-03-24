@@ -39,11 +39,36 @@ public class LogHelper {
     private static File logFile;
     private static File logDir;
     private static boolean useInternalStorage = true;
+    private static boolean logEnabled = false; // 日志开关，默认关闭
+    
+    /**
+     * 设置日志开关
+     */
+    public static void setLogEnabled(boolean enabled) {
+        logEnabled = enabled;
+        if (enabled) {
+            i(TAG, "日志已开启");
+        }
+    }
+    
+    /**
+     * 获取日志开关状态
+     */
+    public static boolean isLogEnabled() {
+        return logEnabled;
+    }
     
     /**
      * 初始化日志系统
      */
     public static void init(Context context) {
+        // 读取日志开关设置
+        try {
+            logEnabled = qzrs.Scrcpy.entity.AppData.setting.getLogEnabled();
+        } catch (Exception e) {
+            logEnabled = false;
+        }
+        
         logDir = getLogDirectory(context);
         
         // 确保目录存在
@@ -165,6 +190,11 @@ public class LogHelper {
      * 写日志
      */
     private static void writeLog(String level, String tag, String message, Throwable throwable) {
+        // 检查日志开关
+        if (!logEnabled) {
+            return;
+        }
+        
         if (logFile == null || logDir == null) {
             return;
         }
@@ -305,6 +335,34 @@ public class LogHelper {
     /**
      * 获取存储类型描述
      */
+    /**
+     * 获取当前日志文件
+     */
+    public static File getCurrentLogFile() {
+        return logFile;
+    }
+    
+    /**
+     * 读取日志内容
+     */
+    public static String readLogContent() {
+        if (logFile == null || !logFile.exists()) {
+            return "";
+        }
+        try {
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(logFile));
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            reader.close();
+            return content.toString();
+        } catch (Exception e) {
+            return "读取失败: " + e.getMessage();
+        }
+    }
+
     public static String getStorageType() {
         return useInternalStorage ? "内部存储" : "外部存储";
     }

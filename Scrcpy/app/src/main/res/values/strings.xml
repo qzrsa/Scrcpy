@@ -17,6 +17,9 @@
   <string name="set_other_reset_key">重置密钥</string>
   <string name="set_other_ip">查看本机IP</string>
   <string name="set_other_locale">语言切换(中文/English)</string>
+  <string name="set_log_title">调试日志</string>
+  <string name="set_log_detail">开启后记录详细日志（耗电）</string>
+  <string name="set_view_log">查看日志</string>
   <string name="set_about_website">项目主页</string>
   <string name="set_about_privacy">隐私政策</string>
   <string name="set_about_version">版本: </string>

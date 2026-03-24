@@ -26,6 +26,16 @@ public final class Setting {
     editor.putBoolean("autoRotate", value);
     editor.apply();
   }
+  
+  // 日志开关（默认为关）
+  public boolean getLogEnabled() {
+    return sharedPreferences.getBoolean("logEnabled", false);
+  }
+
+  public void setLogEnabled(boolean value) {
+    editor.putBoolean("logEnabled", value);
+    editor.apply();
+  }
 
   public String getLocalUUID() {
     if (!sharedPreferences.contains("UUID")) {
