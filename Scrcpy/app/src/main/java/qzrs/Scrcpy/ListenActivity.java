@@ -1,28 +1,14 @@
 package qzrs.Scrcpy;
 
 import android.app.Activity;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
 import android.content.ClipData;
 import android.content.ClipDescription;
-import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
 import android.util.Pair;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import qzrs.Scrcpy.databinding.ActivityListenBinding;
 import qzrs.Scrcpy.entity.AppData;
@@ -31,10 +17,8 @@ import qzrs.Scrcpy.helper.PublicTools;
 import qzrs.Scrcpy.helper.ViewTools;
 
 /**
- * P2P 等待连接模式
- * 
- * 被控端启动此模式后，会启动后台服务监听连接
- * 控制端直接通过 IP:端口 连接
+ * P2P 等待连接模式 - 简化版
+ * 直接在 Activity 中监听，不使用服务
  */
 public class ListenActivity extends Activity {
     
@@ -42,12 +26,9 @@ public class ListenActivity extends Activity {
     private static final int DEFAULT_PORT = 25166;
     
     private boolean isListening = false;
+    private ServerSocket serverSocket;
+    private Thread listenThread;
     private int listeningPort = DEFAULT_PORT;
-    private Handler mainHandler;
-    
-    // 前台服务相关
-    private static final String CHANNEL_ID = "p2p_listen_channel";
-    private static final int NOTIFICATION_ID = 1001;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,32 +38,8 @@ public class ListenActivity extends Activity {
         binding = ActivityListenBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
-        mainHandler = new Handler(Looper.getMainLooper());
-        
-        createNotificationChannel();
-        
         showLocalIp();
         setButtonListener();
-    }
-    
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "P2P 监听服务",
-                    NotificationManager.IMPORTANCE_LOW
-                );
-                channel.setDescription("用于 P2P 直连投屏的后台服务");
-                
-                NotificationManager manager = getSystemService(NotificationManager.class);
-                if (manager != null) {
-                    manager.createNotificationChannel(channel);
-                }
-            } catch (Exception e) {
-                LogHelper.e("ListenActivity", "创建通知频道失败", e);
-            }
-        }
     }
     
     private void showLocalIp() {
@@ -115,7 +72,10 @@ public class ListenActivity extends Activity {
     }
     
     private void setButtonListener() {
-        binding.backButton.setOnClickListener(v -> stopListeningAndFinish());
+        binding.backButton.setOnClickListener(v -> {
+            stopListening();
+            finish();
+        });
         
         binding.startButton.setOnClickListener(v -> {
             String portStr = binding.port.getText().toString().trim();
@@ -149,7 +109,6 @@ public class ListenActivity extends Activity {
                 Toast.makeText(this, getString(R.string.toast_copy), Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 Toast.makeText(this, "复制失败", Toast.LENGTH_SHORT).show();
-                LogHelper.e("ListenActivity", "复制失败", e);
             }
         });
     }
@@ -161,43 +120,28 @@ public class ListenActivity extends Activity {
             isListening = true;
             binding.startButton.setEnabled(false);
             binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_ok);
-            binding.statusText.setText("正在启动服务...");
+            binding.statusText.setText("正在启动...");
             
-            // 启动前台服务
-            Intent serviceIntent = new Intent(this, P2PListenService.class);
-            serviceIntent.putExtra("port", listeningPort);
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(serviceIntent);
-            } else {
-                startService(serviceIntent);
-            }
+            // 创建 ServerSocket
+            serverSocket = new ServerSocket(listeningPort);
+            serverSocket.setReuseAddress(true);
             
             // 更新 UI
-            mainHandler.postDelayed(() -> {
-                try {
-                    if (!isListening) return;
-                    
-                    binding.startButton.setEnabled(true);
-                    binding.startButtonText.setText("停止");
-                    
-                    String ip = binding.ipAddress.getText().toString().split("\n")[0].trim();
-                    binding.statusText.setText("等待控制端连接...\n\n" +
-                        "连接地址: " + ip + ":" + listeningPort + "\n\n" +
-                        "在控制端输入以上地址即可连接");
-                    
-                    Toast.makeText(this, "服务已启动", Toast.LENGTH_SHORT).show();
-                    
-                    // 自动复制到剪贴板
-                    AppData.clipBoard.setPrimaryClip(
-                        ClipData.newPlainText(ClipDescription.MIMETYPE_TEXT_PLAIN, ip + ":" + listeningPort)
-                    );
-                } catch (Exception e) {
-                    LogHelper.e("ListenActivity", "更新UI失败", e);
-                }
-            }, 1000);
+            String ip = binding.ipAddress.getText().toString().split("\n")[0].trim();
+            binding.statusText.setText("等待控制端连接...\n\n" +
+                "连接地址: " + ip + ":" + listeningPort + "\n\n" +
+                "在控制端输入以上地址");
+            binding.startButtonText.setText("停止");
+            binding.startButton.setEnabled(true);
             
-            LogHelper.i("ListenActivity", "P2P 监听服务已启动，端口: " + listeningPort);
+            // 复制到剪贴板
+            AppData.clipBoard.setPrimaryClip(
+                ClipData.newPlainText(ClipDescription.MIMETYPE_TEXT_PLAIN, ip + ":" + listeningPort)
+            );
+            
+            Toast.makeText(this, "已启动，地址已复制", Toast.LENGTH_SHORT).show();
+            
+            LogHelper.i("ListenActivity", "监听开始: " + ip + ":" + listeningPort);
             
         } catch (Exception e) {
             isListening = false;
@@ -210,36 +154,26 @@ public class ListenActivity extends Activity {
     }
     
     private void stopListening() {
+        isListening = false;
         try {
-            isListening = false;
-            
-            // 停止服务
-            Intent serviceIntent = new Intent(this, P2PListenService.class);
-            stopService(serviceIntent);
-            
-            binding.statusText.setText("已停止监听");
-            binding.startButtonText.setText("启动");
-            binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
-            binding.startButton.setEnabled(true);
-            
-            LogHelper.i("ListenActivity", "P2P 监听服务已停止");
+            if (serverSocket != null) {
+                serverSocket.close();
+                serverSocket = null;
+            }
         } catch (Exception e) {
-            LogHelper.e("ListenActivity", "停止失败", e);
+            LogHelper.e("ListenActivity", "关闭失败", e);
         }
-    }
-    
-    private void stopListeningAndFinish() {
-        if (isListening) {
-            stopListening();
-        }
-        finish();
+        
+        binding.statusText.setText("已停止监听");
+        binding.startButtonText.setText("启动");
+        binding.statusIndicator.setBackgroundResource(R.drawable.background_circle_warn);
+        
+        LogHelper.i("ListenActivity", "监听停止");
     }
     
     @Override
     protected void onDestroy() {
-        if (isListening) {
-            stopListening();
-        }
+        stopListening();
         super.onDestroy();
     }
 }
