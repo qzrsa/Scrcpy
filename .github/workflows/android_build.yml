@@ -81,17 +81,19 @@ jobs:
         id: build_server
         run: |
           cd Scrcpy
-          ./gradlew :server:assembleRelease --no-daemon 2>&1 | tee server_build.log
-          ls -la server/build/outputs/apk/release/ || echo "No server output"
+          ./gradlew :server:assembleRelease --no-daemon 2>&1
+          ls -la server/build/outputs/apk/release/
 
-      - name: Check Server Build
+      - name: Copy Server to App
         run: |
-          cat Scrcpy/server_build.log | tail -20
-          ls -la Scrcpy/server/build/outputs/apk/release/ || echo "Server build failed"
+          cd Scrcpy
+          mkdir -p app/src/main/res/raw/
+          cp server/build/outputs/apk/release/*.apk app/src/main/res/raw/scrcpy_server.jar
 
       - name: Build App
         run: |
           cd Scrcpy
+          ls -la app/src/main/res/raw/
           ./gradlew :app:assembleRelease --no-daemon
 
       - name: Rename APK
