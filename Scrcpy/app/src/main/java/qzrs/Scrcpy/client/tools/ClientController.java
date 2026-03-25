@@ -166,6 +166,7 @@ public class ClientController implements TextureView.SurfaceTextureListener {
 
   private synchronized void changeToFull() {
     hide();
+    if (clientStream != null) clientStream.getStatsOverlay().show();
     Intent intent = new Intent(AppData.mainActivity, FullActivity.class);
     intent.putExtra("uuid", device.uuid);
     AppData.mainActivity.startActivity(intent);
@@ -173,6 +174,7 @@ public class ClientController implements TextureView.SurfaceTextureListener {
 
   private synchronized void changeToSmall() {
     hide();
+    if (clientStream != null) clientStream.getStatsOverlay().hide();
     if (noFloatPermission()) {
       PublicTools.logToast("controller", AppData.applicationContext.getString(R.string.toast_float_per), true);
       changeToFull();
@@ -185,6 +187,7 @@ public class ClientController implements TextureView.SurfaceTextureListener {
 
   private synchronized void changeToMini(ByteBuffer byteBuffer) {
     hide();
+    if (clientStream != null) clientStream.getStatsOverlay().hide();
     if (noFloatPermission()) {
       PublicTools.logToast("controller", AppData.applicationContext.getString(R.string.toast_float_per), true);
       changeToFull();

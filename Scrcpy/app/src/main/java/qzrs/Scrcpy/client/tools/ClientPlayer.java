@@ -37,7 +37,6 @@ public class ClientPlayer {
     }
     mainStreamInThread.start();
     videoStreamInThread.start();
-    if (statsOverlay != null) statsOverlay.show();
   }
 
   private void mainStreamIn() {
