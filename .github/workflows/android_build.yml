@@ -78,9 +78,16 @@ jobs:
         run: chmod +x Scrcpy/gradlew
 
       - name: Build Server
+        id: build_server
         run: |
           cd Scrcpy
-          ./gradlew :server:copyRelease --no-daemon
+          ./gradlew :server:assembleRelease --no-daemon 2>&1 | tee server_build.log
+          ls -la server/build/outputs/apk/release/ || echo "No server output"
+
+      - name: Check Server Build
+        run: |
+          cat Scrcpy/server_build.log | tail -20
+          ls -la Scrcpy/server/build/outputs/apk/release/ || echo "Server build failed"
 
       - name: Build App
         run: |

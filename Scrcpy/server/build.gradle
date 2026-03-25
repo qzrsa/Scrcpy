@@ -43,8 +43,9 @@ android {
 
 task copyRelease(type: Copy) {
     dependsOn 'assembleRelease'
-    from file('build/outputs/apk/release/server-release-unsigned.apk')
+    from file('build/outputs/apk/release/')
     into file('../app/src/main/res/raw/')
+    include '*.apk'
     rename('server-release-unsigned.apk', 'scrcpy_server.jar')
 }
 
