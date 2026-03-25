@@ -74,16 +74,25 @@ android {
   }
 }
 
-// Automatically build server before assembling the app
-project.afterEvaluate {
-  android.applicationVariants.all { variant ->
+// Build server first, then copy to raw directory
+tasks.register('prepareServer') {
+    dependsOn ':server:assembleRelease'
+    doLast {
+        copy {
+            from 'server/build/outputs/apk/release/'
+            include '*.apk'
+            into 'app/src/main/res/raw/'
+            rename 'server-release-unsigned.apk', 'scrcpy_server.jar'
+        }
+    }
+}
+
+android.applicationVariants.all { variant ->
     def variantName = variant.name.capitalize()
     def assembleTask = tasks.findByName("assemble${variantName}")
-    def serverCopyTask = project(':server').tasks.findByName("copyRelease")
-    if (assembleTask != null && serverCopyTask != null) {
-      assembleTask.dependsOn(serverCopyTask)
+    if (assembleTask != null) {
+        assembleTask.dependsOn 'prepareServer'
     }
-  }
 }
 
 dependencies {
