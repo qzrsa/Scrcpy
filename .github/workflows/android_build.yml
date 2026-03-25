@@ -77,24 +77,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x Scrcpy/gradlew
 
-      - name: Build Server
-        id: build_server
+      - name: Build App (includes Server)
         run: |
           cd Scrcpy
-          ./gradlew :server:assembleRelease --no-daemon 2>&1
-          ls -la server/build/outputs/apk/release/
-
-      - name: Copy Server to App
-        run: |
-          cd Scrcpy
-          mkdir -p app/src/main/res/raw/
-          cp server/build/outputs/apk/release/*.apk app/src/main/res/raw/scrcpy_server.jar
-
-      - name: Build App
-        run: |
-          cd Scrcpy
-          ls -la app/src/main/res/raw/
           ./gradlew :app:assembleRelease --no-daemon
+          ls -la app/build/outputs/apk/release/
 
       - name: Rename APK
         run: |
