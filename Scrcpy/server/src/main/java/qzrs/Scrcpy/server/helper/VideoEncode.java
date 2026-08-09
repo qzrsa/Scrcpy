@@ -85,9 +85,11 @@ public final class VideoEncode {
       encedec.reset();
     } catch (Exception e) {
       Log.w("VideoEncode", "stopEncode reset 失败，尝试 release: " + e.getMessage());
-      try { encedec.release(); } catch (Exception ignored) {}
-      encedec = MediaCodec.createEncoderByType(useH265 ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC);
-      createEncodecFormat();
+      try {
+        encedec.release();
+      } catch (Exception ex) {
+        Log.w("VideoEncode", "stopEncode release 异常: " + ex.getMessage());
+      }
     }
     if (surface != null) {
       surface.release();
