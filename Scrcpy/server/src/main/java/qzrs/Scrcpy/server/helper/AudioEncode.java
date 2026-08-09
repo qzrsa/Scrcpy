@@ -8,6 +8,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Build;
+import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -58,7 +59,8 @@ public final class AudioEncode {
       int size = Math.min(buffer.remaining(), AudioCapture.AUDIO_PACKET_SIZE);
       audioCapture.read(buffer, size);
       encedec.queueInputBuffer(inIndex, 0, size, 0, 0);
-    } catch (IllegalStateException ignored) {
+    } catch (IllegalStateException e) {
+      Log.w("AudioEncode", "encodeIn 异常: " + e.getMessage());
     }
   }
 
@@ -85,17 +87,25 @@ public final class AudioEncode {
       }
       ControlPacket.sendAudioEvent(buffer);
       encedec.releaseOutputBuffer(outIndex, false);
-    } catch (IllegalStateException ignored) {
+    } catch (IllegalStateException e) {
+      Log.w("AudioEncode", "encodeOut 异常: " + e.getMessage());
     }
   }
 
   public static void release() {
     try {
-      encedec.stop();
-      encedec.release();
-      audioCapture.stop();
-      audioCapture.release();
-    } catch (Exception ignored) {
+      if (encedec != null) {
+        encedec.stop();
+        encedec.release();
+        encedec = null;
+      }
+      if (audioCapture != null) {
+        audioCapture.stop();
+        audioCapture.release();
+        audioCapture = null;
+      }
+    } catch (Exception e) {
+      Log.w("AudioEncode", "release 异常: " + e.getMessage());
     }
   }
 }

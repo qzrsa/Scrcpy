@@ -72,7 +72,6 @@ public class MainActivity extends Activity {
     if (resultCode == RESULT_OK && requestCode == 1) {
       Uri uri = data.getData();
       if (uri == null) deviceListAdapter.pushFile(null, null);
-      ;
       try {
         DocumentFile documentFile = DocumentFile.fromSingleUri(this, uri);
         String fileName = "easycontrolfork_push_file";
@@ -81,9 +80,8 @@ public class MainActivity extends Activity {
         }
         InputStream inputStream = getContentResolver().openInputStream(uri);
         deviceListAdapter.pushFile(inputStream, fileName);
-      } catch (IOException ignored) {
+      } catch (IOException e) {
         deviceListAdapter.pushFile(null, null);
-        ;
       }
     }
     super.onActivityResult(requestCode, resultCode, data);

@@ -4,6 +4,7 @@
 package qzrs.Scrcpy.server;
 
 import android.annotation.SuppressLint;
+import android.util.Log;
 import android.os.IBinder;
 import android.os.IInterface;
 
@@ -38,20 +39,19 @@ public final class Server {
 
   private static final Object object = new Object();
 
-  private static final int timeoutDelay = 1000 * 20;
-
   public static void main(String... args) {
     try {
+      // 解析参数
+      Options.parse(args);
       Thread timeOutThread = new Thread(() -> {
         try {
-          Thread.sleep(timeoutDelay);
+          Thread.sleep(Options.timeoutDelay);
+          Log.w("Server", "连接超时，强制退出");
           release();
         } catch (InterruptedException ignored) {
         }
       });
       timeOutThread.start();
-      // 解析参数
-      Options.parse(args);
       // 初始化
       setManagers();
       Device.init();
@@ -127,6 +127,7 @@ public final class Server {
       mainInputStream = new DataInputStream(mainSocket.getInputStream());
       // 关闭TCP的Nagle算法，避免小包缓冲
       mainSocket.setTcpNoDelay(true);
+      videoSocket.setTcpNoDelay(true);
     }
   }
 
@@ -142,8 +143,14 @@ public final class Server {
         VideoEncode.encodeOut();
         frame++;
         if (frame > 120) {
-          if (System.currentTimeMillis() - lastKeepAliveTime > timeoutDelay) throw new IOException("连接断开");
+          if (System.currentTimeMillis() - lastVideoKeepAliveTime > Options.timeoutDelay) {
+            Log.w("Server", "视频心跳超时，连接已断开");
+            throw new IOException("视频连接断开");
+          }
           frame = 0;
+          // 视频线程主动发送独立心跳包
+          mainOutputStream.write(new byte[]{10});
+          mainOutputStream.flush();
         }
       }
     } catch (Exception e) {
@@ -164,6 +171,7 @@ public final class Server {
   }
 
   private static long lastKeepAliveTime = System.currentTimeMillis();
+  private static long lastVideoKeepAliveTime = System.currentTimeMillis();
 
   private static void executeControlIn() {
     try {
@@ -183,6 +191,12 @@ public final class Server {
             // 收到心跳包，原样返回，用于客户端计算RTT往返延迟
             mainOutputStream.write(new byte[]{4});
             // 强制flush，立刻发送，避免TCP缓冲
+            mainOutputStream.flush();
+            break;
+          case 10:
+            // 视频线程独立心跳，避免视频流单独传输时误判断开
+            lastVideoKeepAliveTime = System.currentTimeMillis();
+            mainOutputStream.write(new byte[]{10});
             mainOutputStream.flush();
             break;
           case 5:
@@ -239,11 +253,13 @@ public final class Server {
           case 2:
             Device.fallbackResolution();
             Device.fallbackScreenLightTimeout();
+            break;
           case 3:
             Runtime.getRuntime().exit(0);
             break;
         }
-      } catch (Exception ignored) {
+      } catch (Exception e) {
+        Log.w("Server", "release() 中发生异常: " + e.getMessage());
       }
     }
   }

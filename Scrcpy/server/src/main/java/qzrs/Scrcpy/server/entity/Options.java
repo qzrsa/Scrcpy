@@ -14,6 +14,8 @@ public final class Options {
   public static boolean supportH265 = true;
   public static boolean supportOpus = true;
   public static String startApp = "";
+  // 心跳超时时间，单位毫秒，默认 20 秒
+  public static int timeoutDelay = 1000 * 20;
 
   public static void parse(String... args) {
     for (String arg : args) {
@@ -51,6 +53,9 @@ public final class Options {
           break;
         case "startApp":
           startApp = value;
+          break;
+        case "timeoutDelay":
+          timeoutDelay = Integer.parseInt(value);
           break;
       }
     }

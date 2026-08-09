@@ -10,6 +10,7 @@ import android.media.MediaFormat;
 import android.os.Build;
 import android.os.IBinder;
 import android.system.ErrnoException;
+import android.util.Log;
 import android.view.Surface;
 
 import java.io.IOException;
@@ -37,8 +38,9 @@ public final class VideoEncode {
     byteBuffer.putInt(Device.videoSize.second);
     byteBuffer.flip();
     Server.writeVideo(byteBuffer);
-    // 创建显示器
-    display = SurfaceControl.createDisplay("easycontrol", Build.VERSION.SDK_INT < Build.VERSION_CODES.R || (Build.VERSION.SDK_INT == Build.VERSION_CODES.R && !"S".equals(Build.VERSION.CODENAME)));
+    // 创建显示器，名称随机化以保护隐私
+    String displayName = "scrcpy_" + System.currentTimeMillis() % 10000;
+    display = SurfaceControl.createDisplay(displayName, Build.VERSION.SDK_INT < Build.VERSION_CODES.R || (Build.VERSION.SDK_INT == Build.VERSION_CODES.R && !"S".equals(Build.VERSION.CODENAME)));
     // 创建Codec
     createEncodecFormat();
     startEncode();
@@ -53,6 +55,10 @@ public final class VideoEncode {
     encodecFormat.setInteger(MediaFormat.KEY_FRAME_RATE, Options.maxFps);
     encodecFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) encodecFormat.setInteger(MediaFormat.KEY_INTRA_REFRESH_PERIOD, Options.maxFps * 3);
+    // 禁用 B 帧，提高编码效率
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      encodecFormat.setInteger("max-bframes", 0);
+    }
     encodecFormat.setFloat("max-fps-to-encoder", Options.maxFps);
     encodecFormat.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 50_000);
     encodecFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
@@ -74,9 +80,19 @@ public final class VideoEncode {
   }
 
   public static void stopEncode() {
-    encedec.stop();
-    encedec.reset();
-    surface.release();
+    try {
+      encedec.stop();
+      encedec.reset();
+    } catch (Exception e) {
+      Log.w("VideoEncode", "stopEncode reset 失败，尝试 release: " + e.getMessage());
+      try { encedec.release(); } catch (Exception ignored) {}
+      encedec = MediaCodec.createEncoderByType(useH265 ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC);
+      createEncodecFormat();
+    }
+    if (surface != null) {
+      surface.release();
+      surface = null;
+    }
   }
 
   private static void setDisplaySurface(IBinder display, Surface surface) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
@@ -101,16 +117,28 @@ public final class VideoEncode {
       if (buffer == null) return;
       ControlPacket.sendVideoEvent(bufferInfo.presentationTimeUs, buffer);
       encedec.releaseOutputBuffer(outIndex, false);
-    } catch (IllegalStateException ignored) {
+    } catch (IllegalStateException e) {
+      Log.w("VideoEncode", "encodeOut 异常: " + e.getMessage());
     }
   }
 
   public static void release() {
     try {
-      stopEncode();
-      encedec.release();
-      SurfaceControl.destroyDisplay(display);
-    } catch (Exception ignored) {
+      if (surface != null) {
+        surface.release();
+        surface = null;
+      }
+      if (encedec != null) {
+        encedec.stop();
+        encedec.release();
+        encedec = null;
+      }
+      if (display != null) {
+        SurfaceControl.destroyDisplay(display);
+        display = null;
+      }
+    } catch (Exception e) {
+      Log.w("VideoEncode", "release 异常: " + e.getMessage());
     }
   }
 

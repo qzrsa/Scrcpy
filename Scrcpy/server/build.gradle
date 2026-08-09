@@ -7,7 +7,8 @@ android {
   compileSdk 36
 
   defaultConfig {
-    minSdk 21
+    // minSdk 24 保证 H.265 硬编解码稳定性和现代 API 兼容性
+    minSdk 24
     targetSdk 36
     applicationId 'qzrs.Scrcpy.server'
     versionCode 30304
@@ -23,6 +24,16 @@ android {
       minifyEnabled true
       shrinkResources true
       proguardFiles 'proguard-rules.pro'
+      // release 构建建议配置签名以防止 APK 被篡改：
+      // 1. 在项目根目录创建 keystore.properties 并填入签名信息
+      // 2. 取消下方 signingConfig 注释并确保 keystore 存在
+      // signingConfigs.release {
+      //   storeFile rootProject.file("release.jks")
+      //   storePassword System.getenv("RELEASE_STORE_PASSWORD")
+      //   keyAlias System.getenv("RELEASE_KEY_ALIAS")
+      //   keyPassword System.getenv("RELEASE_KEY_PASSWORD")
+      // }
+      // signingConfig signingConfigs.release
     }
   }
 
