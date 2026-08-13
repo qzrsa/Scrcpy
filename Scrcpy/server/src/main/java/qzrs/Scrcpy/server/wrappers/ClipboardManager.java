@@ -158,7 +158,7 @@ public class ClipboardManager {
 
   public static void setText(String text) {
     if (setPrimaryClipMethod == null) return;
-    ClipData clipData = ClipData.newPlainText("easycontrol", text);
+    ClipData clipData = ClipData.newPlainText("scrcpy", text);
     try {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) setPrimaryClipMethod.invoke(manager, clipData, FakeContext.PACKAGE_NAME);
       else {

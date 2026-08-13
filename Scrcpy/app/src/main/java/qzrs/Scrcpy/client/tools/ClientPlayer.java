@@ -21,7 +21,7 @@ public class ClientPlayer {
   private final Thread mainStreamInThread = new Thread(this::mainStreamIn);
   private final Thread videoStreamInThread = new Thread(this::videoStreamIn);
   private Handler playHandler = null;
-  private final HandlerThread playHandlerThread = new HandlerThread("easycontrol_play", Thread.MAX_PRIORITY);
+  private final HandlerThread playHandlerThread = new HandlerThread("scrcpy_play", Thread.MAX_PRIORITY);
   private static final int AUDIO_EVENT = 1;
   private static final int CLIPBOARD_EVENT = 2;
   private static final int CHANGE_SIZE_EVENT = 3;

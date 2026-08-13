@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
       ;
       try {
         DocumentFile documentFile = DocumentFile.fromSingleUri(this, uri);
-        String fileName = "easycontrolfork_push_file";
+        String fileName = "scrcpy_push_file";
         if (documentFile != null && documentFile.getName() != null) {
           fileName = documentFile.getName();
         }

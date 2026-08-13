@@ -121,7 +121,7 @@ public class PublicTools {
 
   // 日志
   public static void logToast(String type, String msg, boolean showToast) {
-    Log.e("Easycontrol_" + type, msg);
+    Log.e("Scrcpy_" + type, msg);
     if (showToast) AppData.uiHandler.post(() -> Toast.makeText(AppData.applicationContext, type + ":" + msg, Toast.LENGTH_SHORT).show());
   }
 

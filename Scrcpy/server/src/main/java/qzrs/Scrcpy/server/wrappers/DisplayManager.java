@@ -77,6 +77,6 @@ public final class DisplayManager {
 
     Surface surface = MediaCodec.createPersistentInputSurface();
     android.hardware.display.DisplayManager displayManager = android.hardware.display.DisplayManager.class.getDeclaredConstructor(Context.class).newInstance(FakeContext.get());
-    return displayManager.createVirtualDisplay("easycontrol", realDisplayinfo.width, realDisplayinfo.height, realDisplayinfo.density, surface, flags);
+    return displayManager.createVirtualDisplay("scrcpy", realDisplayinfo.width, realDisplayinfo.height, realDisplayinfo.density, surface, flags);
   }
 }

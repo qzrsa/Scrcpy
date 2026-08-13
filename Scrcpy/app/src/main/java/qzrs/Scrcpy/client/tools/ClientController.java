@@ -50,7 +50,7 @@ public class ClientController implements TextureView.SurfaceTextureListener {
   private Pair<Integer, Integer> maxSize;
   private Pair<Integer, Integer> surfaceSize;
 
-  private final HandlerThread mainThread = new HandlerThread("easycontrol_client_main");
+  private final HandlerThread mainThread = new HandlerThread("scrcpy_client_main");
   private Handler mainHandler;
 
   public ClientController(Device device, ClientStream clientStream, MyInterface.MyFunction handle) {

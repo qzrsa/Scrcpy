@@ -65,7 +65,7 @@ public class AdbTools {
           int dotIndex = tempFileName.lastIndexOf(".");
           tempFileName = UUID.randomUUID() + (dotIndex == -1 ? "" : tempFileName.substring(dotIndex));
         }
-        adb.pushFile(file, "/sdcard/Download/Easycontrol/" + tempFileName, handleProcess);
+        adb.pushFile(file, "/sdcard/Download/Scrcpy/" + tempFileName, handleProcess);
       } catch (Exception ignored) {
         handleProcess.run(-1);
       }
