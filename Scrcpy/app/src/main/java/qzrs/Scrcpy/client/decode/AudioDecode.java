@@ -75,8 +75,9 @@ public class AudioDecode {
   public void decodeIn(ByteBuffer data) throws InterruptedException {
     try {
       int inIndex = intputBufferQueue.take();
+      int len = data.remaining();
       decodec.getInputBuffer(inIndex).put(data);
-      decodec.queueInputBuffer(inIndex, 0, data.capacity(), 0, 0);
+      decodec.queueInputBuffer(inIndex, 0, len, 0, 0);
     } catch (IllegalStateException ignored) {
     }
   }

@@ -95,8 +95,12 @@ public final class VideoEncode {
   public static void encodeOut() throws IOException {
     try {
       // 找到已完成的输出缓冲区
+      // 使用有限超时(1s)而非-1无限等待：关闭时线程可在超时后检测中断标志优雅退出，避免阻塞在 native 调用里只能靠 Runtime.exit(0)
       int outIndex;
-      do outIndex = encedec.dequeueOutputBuffer(bufferInfo, -1); while (outIndex < 0);
+      do {
+        outIndex = encedec.dequeueOutputBuffer(bufferInfo, 1000);
+      } while (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED || outIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED);
+      if (outIndex < 0) return; // INFO_TRY_AGAIN_LATER：本轮无输出，直接返回由调用方循环重试
       ByteBuffer buffer = encedec.getOutputBuffer(outIndex);
       if (buffer == null) return;
       ControlPacket.sendVideoEvent(bufferInfo.presentationTimeUs, buffer);

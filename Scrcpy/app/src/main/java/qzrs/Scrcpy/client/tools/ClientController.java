@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -301,7 +302,7 @@ public class ClientController implements TextureView.SurfaceTextureListener {
       int action = event.getActionMasked();
       if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
         int i = event.getActionIndex();
-        pointerDownTime[i] = event.getEventTime();
+        pointerDownTime.put(i, event.getEventTime());
         createTouchPacket(event, MotionEvent.ACTION_DOWN, i);
       } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) createTouchPacket(event, MotionEvent.ACTION_UP, event.getActionIndex());
       else for (int i = 0; i < event.getPointerCount(); i++) createTouchPacket(event, MotionEvent.ACTION_MOVE, i);
@@ -309,23 +310,30 @@ public class ClientController implements TextureView.SurfaceTextureListener {
     });
   }
 
-  private final int[] pointerList = new int[20];
-  private final long[] pointerDownTime = new long[10];
+  private final HashMap<Integer, Integer> pointerX = new HashMap<>();
+  private final HashMap<Integer, Integer> pointerY = new HashMap<>();
+  private final HashMap<Integer, Long> pointerDownTime = new HashMap<>();
 
   private void createTouchPacket(MotionEvent event, int action, int i) {
-    int offsetTime = (int) (event.getEventTime() - pointerDownTime[i]);
+    int offsetTime = (int) (event.getEventTime() - pointerDownTime.getOrDefault(i, event.getEventTime()));
     int x = (int) event.getX(i);
     int y = (int) event.getY(i);
     int p = event.getPointerId(i);
     if (action == MotionEvent.ACTION_MOVE) {
-      int flipY = pointerList[10 + p] - y;
-      if (flipY > -4 && flipY < 4) {
-        int flipX = pointerList[p] - x;
-        if (flipX > -4 && flipX < 4) return;
+      Integer lastY = pointerY.get(p);
+      if (lastY != null) {
+        int flipY = lastY - y;
+        if (flipY > -4 && flipY < 4) {
+          Integer lastX = pointerX.get(p);
+          if (lastX != null) {
+            int flipX = lastX - x;
+            if (flipX > -4 && flipX < 4) return;
+          }
+        }
       }
     }
-    pointerList[p] = x;
-    pointerList[10 + p] = y;
+    pointerX.put(p, x);
+    pointerY.put(p, y);
     handleAction("writeByteBuffer", ControlPacket.createTouchEvent(action, p, (float) x / surfaceSize.first, (float) y / surfaceSize.second, offsetTime), 0);
   }
 
@@ -344,12 +352,16 @@ public class ClientController implements TextureView.SurfaceTextureListener {
   }
 
   private void setClipBoard(ByteBuffer byteBuffer) {
-    nowClipboardText = new String(byteBuffer.array());
+    byte[] arr = byteBuffer.array();
+    int start = byteBuffer.arrayOffset() + byteBuffer.position();
+    nowClipboardText = new String(arr, start, byteBuffer.remaining(), StandardCharsets.UTF_8);
     AppData.clipBoard.setPrimaryClip(ClipData.newPlainText(MIMETYPE_TEXT_PLAIN, nowClipboardText));
   }
 
   private void runShell(ByteBuffer byteBuffer) throws Exception {
-    String cmd = new String(byteBuffer.array());
+    byte[] arr = byteBuffer.array();
+    int start = byteBuffer.arrayOffset() + byteBuffer.position();
+    String cmd = new String(arr, start, byteBuffer.remaining(), StandardCharsets.UTF_8);
     clientStream.runShell(cmd);
   }
 

@@ -42,6 +42,10 @@ public class ClientStream {
   // 心跳包发送时间戳，用于计算RTT
   public long pingSendTime = 0;
 
+  // 复用缓冲，避免直连路径每帧 new byte[] 造成持续 GC 抖动；按需增长，不收缩
+  private byte[] mainFrameBuffer = new byte[0];
+  private byte[] videoFrameBuffer = new byte[0];
+
   public StatsOverlay getStatsOverlay() {
     return statsOverlay;
   }
@@ -114,12 +118,26 @@ public class ClientStream {
           videoDataInputStream = new DataInputStream(videoSocket.getInputStream());
           connectDirect = true;
           return;
-        } catch (Exception ignored) {
-          if (mainSocket != null) mainSocket.close();
-          if (videoSocket != null) videoSocket.close();
-          if (System.currentTimeMillis() - startTime >= timeoutDelay / 2 - 1000) i = reTry;
-          else Thread.sleep(reTryTime);
+      } catch (Exception ignored) {
+        // 关闭已建立的 socket 并复位状态，否则下一轮重试会复用已关闭的 mainSocket 导致直连失败
+        if (mainSocket != null) {
+          try {
+            mainSocket.close();
+          } catch (Exception e) {
+          }
         }
+        if (videoSocket != null) {
+          try {
+            videoSocket.close();
+          } catch (Exception e) {
+          }
+        }
+        mainSocket = null;
+        videoSocket = null;
+        mainConn = false;
+        if (System.currentTimeMillis() - startTime >= timeoutDelay / 2 - 1000) i = reTry;
+        else Thread.sleep(reTryTime);
+      }
       }
     }
     for (int i = 0; i < reTry; i++) {
@@ -160,17 +178,17 @@ public class ClientStream {
 
   public ByteBuffer readByteArrayFromMain(int size) throws IOException, InterruptedException {
     if (connectDirect) {
-      byte[] buffer = new byte[size];
-      mainDataInputStream.readFully(buffer);
-      return ByteBuffer.wrap(buffer);
+      if (mainFrameBuffer.length < size) mainFrameBuffer = new byte[size];
+      mainDataInputStream.readFully(mainFrameBuffer, 0, size);
+      return ByteBuffer.wrap(mainFrameBuffer, 0, size);
     } else return mainBufferStream.readByteArray(size);
   }
 
   public ByteBuffer readByteArrayFromVideo(int size) throws IOException, InterruptedException {
     if (connectDirect) {
-      byte[] buffer = new byte[size];
-      videoDataInputStream.readFully(buffer);
-      return ByteBuffer.wrap(buffer);
+      if (videoFrameBuffer.length < size) videoFrameBuffer = new byte[size];
+      videoDataInputStream.readFully(videoFrameBuffer, 0, size);
+      return ByteBuffer.wrap(videoFrameBuffer, 0, size);
     }
     return videoBufferStream.readByteArray(size);
   }
@@ -187,8 +205,10 @@ public class ClientStream {
   }
 
   public void writeToMain(ByteBuffer byteBuffer) throws Exception {
-    if (connectDirect) mainOutputStream.write(byteBuffer.array());
-    else mainBufferStream.write(byteBuffer);
+    if (connectDirect) {
+      // 按实际有效区间写入，避免复用缓冲后把数组尾部脏数据也发出去
+      mainOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(), byteBuffer.remaining());
+    } else mainBufferStream.write(byteBuffer);
   }
 
   /**

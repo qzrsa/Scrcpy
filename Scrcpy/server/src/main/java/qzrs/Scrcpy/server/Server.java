@@ -125,8 +125,9 @@ public final class Server {
       mainOutputStream = mainSocket.getOutputStream();
       videoOutputStream = videoSocket.getOutputStream();
       mainInputStream = new DataInputStream(mainSocket.getInputStream());
-      // 关闭TCP的Nagle算法，避免小包缓冲
+      // 关闭TCP的Nagle算法，避免小包缓冲；主/视频两条流都应关闭，否则视频首帧及帧间延迟会被Nagle放大
       mainSocket.setTcpNoDelay(true);
+      videoSocket.setTcpNoDelay(true);
     }
   }
 

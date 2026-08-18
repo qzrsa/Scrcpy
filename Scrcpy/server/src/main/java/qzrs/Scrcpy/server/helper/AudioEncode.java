@@ -51,8 +51,9 @@ public final class AudioEncode {
 
   public static void encodeIn() {
     try {
+      // 有限超时(1s)替代-1无限等待，便于关闭时退出
       int inIndex;
-      do inIndex = encedec.dequeueInputBuffer(-1); while (inIndex < 0);
+      do inIndex = encedec.dequeueInputBuffer(1000); while (inIndex < 0);
       ByteBuffer buffer = encedec.getInputBuffer(inIndex);
       if (buffer == null) return;
       int size = Math.min(buffer.remaining(), AudioCapture.AUDIO_PACKET_SIZE);
@@ -67,8 +68,12 @@ public final class AudioEncode {
   public static void encodeOut() throws IOException {
     try {
       // 找到已完成的输出缓冲区
+      // 有限超时(1s)替代-1无限等待，便于关闭时退出
       int outIndex;
-      do outIndex = encedec.dequeueOutputBuffer(bufferInfo, -1); while (outIndex < 0);
+      do {
+        outIndex = encedec.dequeueOutputBuffer(bufferInfo, 1000);
+      } while (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED || outIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED);
+      if (outIndex < 0) return; // INFO_TRY_AGAIN_LATER
       ByteBuffer buffer = encedec.getOutputBuffer(outIndex);
       if (buffer == null) return;
       if (useOpus) {
