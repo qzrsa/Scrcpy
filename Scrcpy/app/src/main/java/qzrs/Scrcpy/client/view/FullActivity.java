@@ -20,6 +20,7 @@ import qzrs.Scrcpy.R;
 import qzrs.Scrcpy.client.Client;
 import qzrs.Scrcpy.client.tools.ClientController;
 import qzrs.Scrcpy.client.tools.ControlPacket;
+import qzrs.Scrcpy.client.tools.StatsOverlay;
 import qzrs.Scrcpy.databinding.ActivityFullBinding;
 import qzrs.Scrcpy.entity.AppData;
 import qzrs.Scrcpy.entity.Device;
@@ -31,6 +32,7 @@ public class FullActivity extends Activity implements SensorEventListener {
   private Device device;
   private ClientController clientController;
   private ActivityFullBinding activityFullBinding;
+  private StatsOverlay statsOverlay;
   private boolean autoRotate;
   private boolean light = true;
 
@@ -46,6 +48,7 @@ public class FullActivity extends Activity implements SensorEventListener {
     clientController = Client.getClientController(uuid);
     if (device == null || clientController == null) return;
     clientController.setFullView(this);
+    statsOverlay = clientController.getStatsOverlay();
     // 初始化
     activityFullBinding.barView.setVisibility(View.GONE);
     setNavBarHide(device.showNavBarOnConnect);
@@ -136,6 +139,22 @@ public class FullActivity extends Activity implements SensorEventListener {
       changeBarView();
     });
     activityFullBinding.buttonMore.setOnClickListener(v -> changeBarView());
+    // 最左侧 WIFI 图标：点击切换统计信息覆盖层显示/隐藏
+    activityFullBinding.buttonNetwork.setOnClickListener(v -> {
+      if (statsOverlay == null) return;
+      if (statsOverlay.isShowing()) statsOverlay.hide();
+      else statsOverlay.show();
+    });
+    // 锁定按钮（位于"更多"弹出面板内）
+    activityFullBinding.buttonLock.setOnClickListener(v -> {
+      clientController.handleAction("buttonLock", null, 0);
+      changeBarView();
+    });
+    // WIFI 图标颜色随网络质量变化（绿/橙/红/白）
+    if (statsOverlay != null) {
+      statsOverlay.setOnQualityListener(color ->
+        activityFullBinding.buttonNetwork.setImageTintList(ColorStateList.valueOf(color)));
+    }
     activityFullBinding.buttonAutoRotate.setOnClickListener(v -> {
       autoRotate = !autoRotate;
       AppData.setting.setAutoRotate(autoRotate);

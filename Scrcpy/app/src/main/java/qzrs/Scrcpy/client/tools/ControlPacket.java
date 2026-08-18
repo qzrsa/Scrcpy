@@ -71,6 +71,16 @@ public final class ControlPacket {
     return byteBuffer;
   }
 
+  // 统计信息：服务端每秒上报 视频采集帧率 + 当前码率（类型 11，与 Server/ClientPlayer 对应）
+  public static ByteBuffer createStats(int captureFps, int bitrate) {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(9);
+    byteBuffer.put((byte) 11);
+    byteBuffer.putInt(captureFps);
+    byteBuffer.putInt(bitrate);
+    byteBuffer.flip();
+    return byteBuffer;
+  }
+
   // 修改分辨率事件
   public static ByteBuffer createChangeResolutionEvent(float newSize) {
     ByteBuffer byteBuffer = ByteBuffer.allocate(5);

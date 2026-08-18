@@ -66,6 +66,11 @@ public class ClientPlayer {
               clientStream.pingSendTime = 0;
             }
             break;
+          case 11:
+            // 服务端统计：视频采集帧率 + 当前码率
+            statsOverlay.onCaptureFps(clientStream.readIntFromMain());
+            statsOverlay.setBitrate(clientStream.readIntFromMain());
+            break;
         }
       }
     } catch (InterruptedException ignored) {
@@ -84,7 +89,7 @@ public class ClientPlayer {
       Surface surface = new Surface(clientController.getTextureView().getSurfaceTexture());
       ByteBuffer csd0 = clientStream.readFrameFromVideo();
       ByteBuffer csd1 = useH265 ? null : clientStream.readFrameFromVideo();
-      videoDecode = new VideoDecode(videoSize, surface, csd0, csd1, playHandler);
+      videoDecode = new VideoDecode(videoSize, surface, csd0, csd1, playHandler, statsOverlay);
       while (!Thread.interrupted()) {
         ByteBuffer frame = clientStream.readFrameFromVideo();
         if (statsOverlay != null) statsOverlay.onVideoFrame(frame.remaining());

@@ -33,6 +33,8 @@ public final class VideoEncode {
   // 自适应码率下限(bps)，避免画质崩塌；当前生效码率，用于去重避免重复 setParameters
   private static final int AUTO_BITRATE_FLOOR = 1_000_000;
   private static int currentBitrate = 0;
+  // 已编码输出帧数（用于向客户端上报采集帧率）
+  public static volatile long encodedFrameCount = 0;
 
   public static void init() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException, IOException, ErrnoException {
     useH265 = Options.supportH265 && EncodecTools.isSupportH265();
@@ -107,6 +109,7 @@ public final class VideoEncode {
         outIndex = encedec.dequeueOutputBuffer(bufferInfo, 1000);
       } while (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED || outIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED);
       if (outIndex < 0) return; // INFO_TRY_AGAIN_LATER：本轮无输出，直接返回由调用方循环重试
+      encodedFrameCount++; // 统计：成功编码出一帧
       ByteBuffer buffer = encedec.getOutputBuffer(outIndex);
       if (buffer == null) return;
       ControlPacket.sendVideoEvent(bufferInfo.presentationTimeUs, buffer);
@@ -129,6 +132,10 @@ public final class VideoEncode {
    * 限制在 [下限, maxVideoBit封顶] 区间内，仅当与当前值不同才调用 setParameters，
    * 并用 try/catch 兜底（编码器未在正确状态时不抛异常中断主流程）。
    */
+  public static int getCurrentBitrate() {
+    return currentBitrate;
+  }
+
   public static void requestBitrate(int bitrate) {
     if (encedec == null) return;
     int clamped = Math.max(AUTO_BITRATE_FLOOR, Math.min(bitrate, Options.maxVideoBit));

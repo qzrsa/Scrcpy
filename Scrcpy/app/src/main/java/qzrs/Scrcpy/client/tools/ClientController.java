@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 
 import qzrs.Scrcpy.R;
 import qzrs.Scrcpy.client.Client;
+import qzrs.Scrcpy.client.tools.StatsOverlay;
 import qzrs.Scrcpy.client.view.FullActivity;
 import qzrs.Scrcpy.client.view.MiniView;
 import qzrs.Scrcpy.client.view.SmallView;
@@ -165,9 +166,14 @@ public class ClientController implements TextureView.SurfaceTextureListener {
     return textureView;
   }
 
+  /** 暴露统计信息覆盖层，供 FullActivity 的 WIFI 图标做显隐切换与质量染色 */
+  public StatsOverlay getStatsOverlay() {
+    return clientStream != null ? clientStream.getStatsOverlay() : null;
+  }
+
   private synchronized void changeToFull() {
     hide();
-    if (clientStream != null) clientStream.getStatsOverlay().show();
+    // 统计信息覆盖层改由底部 WIFI 图标点击控制显隐，不再进入全屏自动弹出
     Intent intent = new Intent(AppData.mainActivity, FullActivity.class);
     intent.putExtra("uuid", device.uuid);
     AppData.mainActivity.startActivity(intent);

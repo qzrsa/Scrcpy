@@ -82,6 +82,7 @@ public class ClientStream {
         adb = AdbTools.connectADB(device);
         startServer(device);
         connectServer(device);
+        statsOverlay.setDirect(connectDirect);
         if (autoBitrate) startAdaptiveBitrate();
         handle.run(true);
       } catch (Exception e) {

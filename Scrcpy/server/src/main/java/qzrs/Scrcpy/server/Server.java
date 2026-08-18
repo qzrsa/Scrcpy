@@ -142,6 +142,17 @@ public final class Server {
         }
         VideoEncode.encodeOut();
         frame++;
+        // 每秒向客户端上报一次统计（视频采集帧率 + 当前码率），供 WIFI 详情面板使用
+        long now = System.currentTimeMillis();
+        if (now - lastStatsTime >= 1000) {
+          long frames = VideoEncode.encodedFrameCount - lastStatsFrames;
+          lastStatsFrames = VideoEncode.encodedFrameCount;
+          lastStatsTime = now;
+          try {
+            writeMain(ControlPacket.createStats((int) frames, VideoEncode.getCurrentBitrate()));
+          } catch (IOException ignored) {
+          }
+        }
         if (frame > 120) {
           if (System.currentTimeMillis() - lastKeepAliveTime > timeoutDelay) throw new IOException("连接断开");
           frame = 0;
@@ -165,6 +176,8 @@ public final class Server {
   }
 
   private static long lastKeepAliveTime = System.currentTimeMillis();
+  private static long lastStatsTime = System.currentTimeMillis();
+  private static long lastStatsFrames = 0;
 
   private static void executeControlIn() {
     try {

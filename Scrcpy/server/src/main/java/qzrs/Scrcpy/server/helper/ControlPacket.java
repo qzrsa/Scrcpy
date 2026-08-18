@@ -76,6 +76,16 @@ public final class ControlPacket {
     Server.writeMain(byteBuffer);
   }
 
+  /** 统计信息包(type=11)：视频采集帧率 + 当前码率(bps)，供客户端展示 */
+  public static ByteBuffer createStats(int captureFps, int bitrate) {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(9);
+    byteBuffer.put((byte) 11);
+    byteBuffer.putInt(captureFps);
+    byteBuffer.putInt(bitrate);
+    byteBuffer.flip();
+    return byteBuffer;
+  }
+
   public static void handleTouchEvent() throws IOException {
     int action = Server.mainInputStream.readByte();
     int pointerId = Server.mainInputStream.readByte();

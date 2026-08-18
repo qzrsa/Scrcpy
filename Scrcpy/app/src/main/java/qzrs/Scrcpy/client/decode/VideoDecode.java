@@ -14,8 +14,15 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import qzrs.Scrcpy.client.tools.StatsOverlay;
+
 public class VideoDecode {
   private MediaCodec decodec;
+  private final StatsOverlay statsOverlay;
+  // 渲染帧率统计
+  private long renderFrameCount = 0;
+  private long renderLastUpdate = System.currentTimeMillis();
+
   private final MediaCodec.Callback callback = new MediaCodec.Callback() {
     @Override
     public void onInputBufferAvailable(@NonNull MediaCodec mediaCodec, int inIndex) {
@@ -26,6 +33,16 @@ public class VideoDecode {
     public void onOutputBufferAvailable(@NonNull MediaCodec mediaCodec, int outIndex, @NonNull MediaCodec.BufferInfo bufferInfo) {
       try {
         mediaCodec.releaseOutputBuffer(outIndex, bufferInfo.presentationTimeUs);
+        // 统计渲染帧率（每秒聚合一次上报）
+        renderFrameCount++;
+        long now = System.currentTimeMillis();
+        long elapsed = now - renderLastUpdate;
+        if (elapsed >= 1000) {
+          int fps = (int) (renderFrameCount * 1000L / elapsed);
+          renderFrameCount = 0;
+          renderLastUpdate = now;
+          if (statsOverlay != null) statsOverlay.onRenderFps(fps);
+        }
       } catch (IllegalStateException ignored) {
       }
     }
@@ -39,7 +56,8 @@ public class VideoDecode {
     }
   };
 
-  public VideoDecode(Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler) throws IOException, InterruptedException {
+  public VideoDecode(Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler, StatsOverlay statsOverlay) throws IOException, InterruptedException {
+    this.statsOverlay = statsOverlay;
     setVideoDecodec(videoSize, surface, csd0, csd1, playHandler);
   }
 
@@ -67,6 +85,7 @@ public class VideoDecode {
   // 创建Codec
   private void setVideoDecodec(Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler) throws IOException, InterruptedException {
     boolean useH265 = csd1 == null;
+    if (statsOverlay != null) statsOverlay.setDecodeMethod(useH265 ? "H265/HEVC" : "H264/AVC");
     // 创建解码器
     String codecMime = useH265 ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC;
     try {
