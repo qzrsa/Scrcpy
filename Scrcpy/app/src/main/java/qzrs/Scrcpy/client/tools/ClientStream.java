@@ -36,11 +36,27 @@ public class ClientStream {
 
   private static final int timeoutDelay = 1000 * 15;
 
+  // 自适应码率参数（单位 bps / ms）
+  private static final int ADAPTIVE_CEILING_BPS = 12_000_000; // 封顶，与设备页"自适应"对应的上限一致
+  private static final int ADAPTIVE_FLOOR_BPS = 1_000_000;    // 下限，避免画质崩塌
+  private static final int ADAPTIVE_STEP_BPS = 1_000_000;     // 通畅时每周期加性递增步长
+  private static final int ADAPTIVE_MIN_STEP_BPS = 500_000;   // 变化小于此值则不发送，避免抖动
+  private static final long RTT_CONGESTED_MS = 150;           // 超过视为拥塞，乘性降码率
+  private static final long RTT_HEALTHY_MS = 80;              // 低于视为通畅，加性升码率
+  private static final long ADAPTIVE_INTERVAL_MS = 2000;      // 调整周期，与 keepalive(2s) 对齐
+
+  private Thread adaptiveThread = null;
+
   // 统计信息覆盖层
   private final StatsOverlay statsOverlay = new StatsOverlay();
 
   // 心跳包发送时间戳，用于计算RTT
   public long pingSendTime = 0;
+
+  // 自适应码率：最近一次测得的RTT(ms)，由 ClientPlayer 写入；controller 线程读取
+  public volatile long lastRtt = 0;
+  // 自适应码率开关（来自设备配置），为 true 时启动动态调整线程
+  public boolean autoBitrate = false;
 
   // 复用缓冲，避免直连路径每帧 new byte[] 造成持续 GC 抖动；按需增长，不收缩
   private byte[] mainFrameBuffer = new byte[0];
@@ -51,6 +67,7 @@ public class ClientStream {
   }
 
   public ClientStream(Device device, MyInterface.MyFunctionBoolean handle) {
+    this.autoBitrate = device.autoBitrate;
     Thread timeOutThread = new Thread(() -> {
       try {
         Thread.sleep(timeoutDelay);
@@ -65,6 +82,7 @@ public class ClientStream {
         adb = AdbTools.connectADB(device);
         startServer(device);
         connectServer(device);
+        if (autoBitrate) startAdaptiveBitrate();
         handle.run(true);
       } catch (Exception e) {
         PublicTools.logToast("stream", e.toString(), true);
@@ -90,6 +108,7 @@ public class ClientStream {
       + " maxSize=" + device.maxSize
       + " maxFps=" + device.maxFps
       + " maxVideoBit=" + device.maxVideoBit
+      + " autoBitrate=" + (device.autoBitrate ? 1 : 0)
       + " keepAwake=" + (device.keepWakeOnRunning ? 1 : 0)
       + " supportH265=" + ((device.useH265 && supportH265) ? 1 : 0)
       + " supportOpus=" + (supportOpus ? 1 : 0)
@@ -222,6 +241,7 @@ public class ClientStream {
   public void close() {
     if (isClose) return;
     isClose = true;
+    if (adaptiveThread != null) adaptiveThread.interrupt();
     if (shell != null) PublicTools.logToast("server", new String(shell.readByteArrayBeforeClose().array()), false);
     if (connectDirect) {
       try {
@@ -236,5 +256,43 @@ public class ClientStream {
       mainBufferStream.close();
       videoBufferStream.close();
     }
+  }
+
+  /**
+   * 自适应码率控制器：连接建立后启动，按最近 RTT 用 AIMD 在 [下限, 封顶] 内动态调整码率。
+   * 拥塞(RTT高)时乘性降、通畅(RTT低)时加性升，带滞后区间与最小步长防止抖动/忽高忽低。
+   * 仅自适应模式(autoBitrate)启动，固定码率模式不生效。
+   */
+  private void startAdaptiveBitrate() {
+    adaptiveThread = new Thread(() -> {
+      int current = ADAPTIVE_CEILING_BPS; // 从封顶起步，由链路状况向下收敛
+      while (!Thread.interrupted() && !isClose) {
+        try {
+          Thread.sleep(ADAPTIVE_INTERVAL_MS);
+        } catch (InterruptedException e) {
+          break;
+        }
+        long rtt = lastRtt;
+        if (rtt <= 0) continue; // 尚未测到有效RTT，跳过
+        int target;
+        if (rtt > RTT_CONGESTED_MS) {
+          target = (int) (current * 0.8); // 拥塞：乘性降
+        } else if (rtt < RTT_HEALTHY_MS) {
+          target = Math.min(ADAPTIVE_CEILING_BPS, current + ADAPTIVE_STEP_BPS); // 通畅：加性升
+        } else {
+          target = current; // 滞后区间：保持不变，避免边界抖动
+        }
+        target = Math.max(ADAPTIVE_FLOOR_BPS, Math.min(target, ADAPTIVE_CEILING_BPS));
+        if (Math.abs(target - current) >= ADAPTIVE_MIN_STEP_BPS) {
+          try {
+            writeToMain(ControlPacket.createSetBitrate(target));
+            current = target;
+          } catch (Exception ignored) {
+          }
+        }
+      }
+    }, "scrcpy_adaptive");
+    adaptiveThread.setDaemon(true);
+    adaptiveThread.start();
   }
 }

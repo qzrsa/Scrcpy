@@ -9,6 +9,8 @@ public final class Options {
   public static boolean isAudio = true;
   public static int maxSize = 1600;
   public static int maxVideoBit = 4000000;
+  // 自适应码率开关：开启时 maxVideoBit 作为封顶值，由客户端按RTT动态下发 setBitrate 调整
+  public static boolean autoBitrate = false;
   public static int maxFps = 60;
   public static boolean keepAwake = true;
   public static boolean supportH265 = true;
@@ -39,6 +41,9 @@ public final class Options {
           break;
         case "maxVideoBit":
           maxVideoBit = Integer.parseInt(value) * 1000000;
+          break;
+        case "autoBitrate":
+          autoBitrate = Integer.parseInt(value) == 1;
           break;
         case "keepAwake":
           keepAwake = Integer.parseInt(value) == 1;

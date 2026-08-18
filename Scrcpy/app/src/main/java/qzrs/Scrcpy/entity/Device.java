@@ -17,6 +17,8 @@ public class Device {
   public int maxSize = 1600;
   public int maxFps = 60;
   public int maxVideoBit = 4;
+  // 自适应码率开关：开启时 maxVideoBit 作为封顶值(默认12Mbps)，由客户端按链路RTT动态调整
+  public boolean autoBitrate = false;
   public boolean useH265 = true;
   public boolean connectOnStart = false;
   public boolean customResolutionOnConnect = false;
@@ -72,6 +74,7 @@ public class Device {
     newDevice.maxSize = maxSize;
     newDevice.maxFps = maxFps;
     newDevice.maxVideoBit = maxVideoBit;
+    newDevice.autoBitrate = autoBitrate;
     newDevice.useH265 = useH265;
     newDevice.connectOnStart = connectOnStart;
     newDevice.customResolutionOnConnect = customResolutionOnConnect;

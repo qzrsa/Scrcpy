@@ -51,7 +51,7 @@ public class DeviceDetailActivity extends Activity {
   // 绘制UI
   private static final String[] maxSizeList = new String[]{"2560", "1920", "1600", "1280", "1024", "800"};
   private static final String[] maxFpsList = new String[]{"90", "60", "40", "30", "20", "10"};
-  private static final String[] maxVideoBitList = new String[]{"12", "8", "4", "2", "1"};
+  private static final String[] maxVideoBitList = new String[]{"自适应", "12", "8", "4", "2", "1"};
 
   private void drawUI() {
     // UUID
@@ -96,7 +96,16 @@ public class DeviceDetailActivity extends Activity {
     activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSwitchCard(this, getString(R.string.device_is_audio), getString(R.string.device_is_audio_detail), device.isAudio, isChecked -> device.isAudio = isChecked).getRoot());
     activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSpinnerCard(this, getString(R.string.device_max_size), getString(R.string.device_max_size_detail), String.valueOf(device.maxSize), maxSizeAdapter, str -> device.maxSize = Integer.parseInt(str)).getRoot());
     activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSpinnerCard(this, getString(R.string.device_max_fps), getString(R.string.device_max_fps_detail), String.valueOf(device.maxFps), maxFpsAdapter, str -> device.maxFps = Integer.parseInt(str)).getRoot());
-    activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSpinnerCard(this, getString(R.string.device_max_video_bit), getString(R.string.device_max_video_bit_detail), String.valueOf(device.maxVideoBit), maxVideoBitAdapter, str -> device.maxVideoBit = Integer.parseInt(str)).getRoot());
+    activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSpinnerCard(this, getString(R.string.device_max_video_bit), getString(R.string.device_max_video_bit_detail), device.autoBitrate ? "自适应" : String.valueOf(device.maxVideoBit), maxVideoBitAdapter, str -> {
+      if ("自适应".equals(str)) {
+        // 自适应模式：手动上限作为封顶值，固定存 12Mbps，由客户端按RTT动态调整
+        device.autoBitrate = true;
+        device.maxVideoBit = 12;
+      } else {
+        device.autoBitrate = false;
+        device.maxVideoBit = Integer.parseInt(str);
+      }
+    }).getRoot());
     activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSwitchCard(this, getString(R.string.device_use_h265), getString(R.string.device_use_h265_detail), device.useH265, isChecked -> device.useH265 = isChecked).getRoot());
     activityDeviceDetailBinding.layoutOptionSub.addView(ViewTools.createSwitchCard(this, getString(R.string.device_connect_on_start), getString(R.string.device_connect_on_start_detail), device.connectOnStart, isChecked -> device.connectOnStart = isChecked).getRoot());
   }

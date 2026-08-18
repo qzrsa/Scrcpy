@@ -62,6 +62,7 @@ public class ClientPlayer {
             if (clientStream.pingSendTime != 0) {
               long rtt = System.currentTimeMillis() - clientStream.pingSendTime;
               statsOverlay.onLatency(rtt);
+              clientStream.lastRtt = rtt; // 供自适应码率控制器读取
               clientStream.pingSendTime = 0;
             }
             break;

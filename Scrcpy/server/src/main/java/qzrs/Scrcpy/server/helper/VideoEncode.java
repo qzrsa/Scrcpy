@@ -29,6 +29,10 @@ public final class VideoEncode {
 
   private static IBinder display;
 
+  // 自适应码率下限(bps)，避免画质崩塌；当前生效码率，用于去重避免重复 setParameters
+  private static final int AUTO_BITRATE_FLOOR = 1_000_000;
+  private static int currentBitrate = 0;
+
   public static void init() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException, IOException, ErrnoException {
     useH265 = Options.supportH265 && EncodecTools.isSupportH265();
     ByteBuffer byteBuffer = ByteBuffer.allocate(9);
@@ -50,6 +54,7 @@ public final class VideoEncode {
     encodecFormat = new MediaFormat();
     encodecFormat.setString(MediaFormat.KEY_MIME, codecMime);
     encodecFormat.setInteger(MediaFormat.KEY_BIT_RATE, Options.maxVideoBit);
+    currentBitrate = Options.maxVideoBit; // 自适应模式从封顶起步，由客户端向下收敛
     encodecFormat.setInteger(MediaFormat.KEY_FRAME_RATE, Options.maxFps);
     encodecFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) encodecFormat.setInteger(MediaFormat.KEY_INTRA_REFRESH_PERIOD, Options.maxFps * 3);
@@ -115,6 +120,24 @@ public final class VideoEncode {
       encedec.release();
       SurfaceControl.destroyDisplay(display);
     } catch (Exception ignored) {
+    }
+  }
+
+  /**
+   * 自适应码率：客户端按链路RTT动态请求的目标码率(bps)。
+   * 限制在 [下限, maxVideoBit封顶] 区间内，仅当与当前值不同才调用 setParameters，
+   * 并用 try/catch 兜底（编码器未在正确状态时不抛异常中断主流程）。
+   */
+  public static void requestBitrate(int bitrate) {
+    if (encedec == null) return;
+    int clamped = Math.max(AUTO_BITRATE_FLOOR, Math.min(bitrate, Options.maxVideoBit));
+    if (clamped == currentBitrate) return;
+    try {
+      MediaCodec.Parameters params = new MediaCodec.Parameters();
+      params.setVideoBitrate(clamped);
+      encedec.setParameters(params);
+      currentBitrate = clamped;
+    } catch (IllegalStateException ignored) {
     }
   }
 

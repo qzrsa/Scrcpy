@@ -14,7 +14,7 @@ import qzrs.Scrcpy.entity.Device;
 public class DbHelper extends SQLiteOpenHelper {
 
   private static final String dataBaseName = "app.db";
-  private static final int version = 23;
+  private static final int version = 24;
   private final String tableName = "DevicesDb";
 
   public DbHelper(Context context) {
@@ -37,6 +37,7 @@ public class DbHelper extends SQLiteOpenHelper {
     stringBuilder.append("maxSize integer,");
     stringBuilder.append("maxFps integer,");
     stringBuilder.append("maxVideoBit integer,");
+    stringBuilder.append("autoBitrate integer,");
     stringBuilder.append("useH265 integer,");
     stringBuilder.append("connectOnStart integer,");
     stringBuilder.append("customResolutionOnConnect integer,");
@@ -134,6 +135,7 @@ public class DbHelper extends SQLiteOpenHelper {
     values.put("maxSize", device.maxSize);
     values.put("maxFps", device.maxFps);
     values.put("maxVideoBit", device.maxVideoBit);
+    values.put("autoBitrate", device.autoBitrate ? 1 : 0);
     values.put("useH265", device.useH265 ? 1 : 0);
     values.put("connectOnStart", device.connectOnStart ? 1 : 0);
     values.put("customResolutionOnConnect", device.customResolutionOnConnect ? 1 : 0);
@@ -204,6 +206,10 @@ public class DbHelper extends SQLiteOpenHelper {
         }
         case "maxVideoBit": {
           device.maxVideoBit = cursor.getInt(i);
+          break;
+        }
+        case "autoBitrate": {
+          device.autoBitrate = cursor.getInt(i) == 1;
           break;
         }
         case "useH265": {

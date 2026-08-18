@@ -199,6 +199,10 @@ public final class Server {
           case 9:
             Device.changeResolution(mainInputStream.readInt(), mainInputStream.readInt());
             break;
+          case 10:
+            // 自适应码率：客户端请求把视频码率调整到指定 bps
+            VideoEncode.requestBitrate(mainInputStream.readInt());
+            break;
         }
       }
     } catch (Exception e) {

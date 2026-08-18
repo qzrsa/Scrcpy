@@ -62,6 +62,15 @@ public final class ControlPacket {
     return ByteBuffer.wrap(new byte[]{4});
   }
 
+  // 自适应码率：请求服务端把视频码率调整到指定 bps（类型 10，与 Server.executeControlIn 对应）
+  public static ByteBuffer createSetBitrate(int bitrate) {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(5);
+    byteBuffer.put((byte) 10);
+    byteBuffer.putInt(bitrate);
+    byteBuffer.flip();
+    return byteBuffer;
+  }
+
   // 修改分辨率事件
   public static ByteBuffer createChangeResolutionEvent(float newSize) {
     ByteBuffer byteBuffer = ByteBuffer.allocate(5);
