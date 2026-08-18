@@ -8,6 +8,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.system.ErrnoException;
 import android.view.Surface;
@@ -133,8 +134,10 @@ public final class VideoEncode {
     int clamped = Math.max(AUTO_BITRATE_FLOOR, Math.min(bitrate, Options.maxVideoBit));
     if (clamped == currentBitrate) return;
     try {
-      MediaCodec.Parameters params = new MediaCodec.Parameters();
-      params.setVideoBitrate(clamped);
+      // 运行时动态改码率：走公开的 Bundle 参数接口（MediaCodec.Parameters 为隐藏类，
+      // 不在公开 SDK 中，编译期不可见）。KEY_BIT_RATE 即创建编码器时用的同一个码率键。
+      Bundle params = new Bundle();
+      params.putInt(MediaFormat.KEY_BIT_RATE, clamped);
       encedec.setParameters(params);
       currentBitrate = clamped;
     } catch (IllegalStateException ignored) {
