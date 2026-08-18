@@ -49,11 +49,15 @@ public class FullActivity extends Activity implements SensorEventListener {
     if (device == null || clientController == null) return;
     clientController.setFullView(this);
     statsOverlay = clientController.getStatsOverlay();
+    if (statsOverlay != null) {
+      statsOverlay.setAnchorView(activityFullBinding.buttonNetwork);
+      if (statsOverlay.isShowing()) statsOverlay.show(); // 横竖屏切换后重新定位
+    }
     // 初始化
     activityFullBinding.barView.setVisibility(View.GONE);
     setNavBarHide(device.showNavBarOnConnect);
     autoRotate = AppData.setting.getAutoRotate();
-    activityFullBinding.buttonAutoRotate.setImageResource(autoRotate ? R.drawable.un_auto : R.drawable.auto);
+    activityFullBinding.buttonAutoRotate.setImageResource(autoRotate ? R.drawable.auto : R.drawable.un_auto);
     if (!Objects.equals(device.startApp, "")) {
       activityFullBinding.buttonHome.setVisibility(View.GONE);
       activityFullBinding.buttonSwitch.setVisibility(View.GONE);
@@ -158,7 +162,7 @@ public class FullActivity extends Activity implements SensorEventListener {
     activityFullBinding.buttonAutoRotate.setOnClickListener(v -> {
       autoRotate = !autoRotate;
       AppData.setting.setAutoRotate(autoRotate);
-      activityFullBinding.buttonAutoRotate.setImageResource(autoRotate ? R.drawable.un_auto : R.drawable.auto);
+      activityFullBinding.buttonAutoRotate.setImageResource(autoRotate ? R.drawable.auto : R.drawable.un_auto);
     });
   }
 

@@ -85,7 +85,10 @@ public class VideoDecode {
   // 创建Codec
   private void setVideoDecodec(Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler) throws IOException, InterruptedException {
     boolean useH265 = csd1 == null;
-    if (statsOverlay != null) statsOverlay.setDecodeMethod(useH265 ? "H265/HEVC" : "H264/AVC");
+    if (statsOverlay != null) {
+      statsOverlay.setSource(videoSize.first + "x" + videoSize.second + "/" + (useH265 ? "H265" : "H264"));
+      statsOverlay.setDecodeMethod("硬解");
+    }
     // 创建解码器
     String codecMime = useH265 ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC;
     try {

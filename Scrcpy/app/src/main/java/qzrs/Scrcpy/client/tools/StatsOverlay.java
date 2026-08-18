@@ -1,9 +1,11 @@
 package qzrs.Scrcpy.client.tools;
 
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.view.Gravity;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
 
@@ -44,6 +46,7 @@ public class StatsOverlay {
   private int lastQualityColor = 0;
 
   private MyInterface.MyFunctionInt onQualityListener;
+  private View anchorView; // 锚点 View（WIFI 按钮），浮层会定位在其附近
 
   private long lastUpdateTime = System.currentTimeMillis();
 
@@ -74,11 +77,56 @@ public class StatsOverlay {
 
   public void show() {
     AppData.uiHandler.post(() -> {
+      updatePositionByAnchor();
       if (!isAdded) {
         AppData.windowManager.addView(textView, params);
         isAdded = true;
+      } else {
+        AppData.windowManager.updateViewLayout(textView, params);
       }
     });
+  }
+
+  /** 设置锚点 View，浮层会跟随该 View 的屏幕位置定位 */
+  public void setAnchorView(View anchor) {
+    anchorView = anchor;
+  }
+
+  /** 根据锚点 View 计算浮层位置：竖屏时在按钮上方，横屏时在按钮内侧 */
+  private void updatePositionByAnchor() {
+    if (anchorView == null) {
+      params.gravity = Gravity.TOP | Gravity.START;
+      params.x = 16;
+      params.y = 80;
+      return;
+    }
+    int[] loc = new int[2];
+    anchorView.getLocationOnScreen(loc);
+    int ax = loc[0];
+    int ay = loc[1];
+    int aw = anchorView.getMeasuredWidth();
+    int ah = anchorView.getMeasuredHeight();
+
+    // 先按竖屏估算浮层高度，addView 后会再测一次精调
+    textView.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+    int tw = textView.getMeasuredWidth();
+    int th = textView.getMeasuredHeight();
+
+    // 判断屏幕方向
+    boolean landscape = anchorView.getResources().getConfiguration().orientation
+        == Configuration.ORIENTATION_LANDSCAPE;
+
+    params.gravity = Gravity.TOP | Gravity.START;
+    if (landscape) {
+      // 横屏：锚点一般在右侧，浮层放在按钮左侧
+      params.x = Math.max(16, ax - tw - 8);
+      params.y = Math.max(16, ay + ah / 2 - th / 2);
+    } else {
+      // 竖屏：锚点在底部，浮层放在按钮上方
+      params.x = Math.max(16, ax + aw / 2 - tw / 2);
+      params.y = Math.max(16, ay - th - 8);
+    }
   }
 
   public void hide() {
@@ -165,9 +213,9 @@ public class StatsOverlay {
     int lossPct = (captureFps > 0 && recv > 0) ? Math.max(0, (int) ((1f - (float) recv / captureFps) * 100)) : -1;
     lastLossPct = lossPct;
     int total = latencyMs < 0 ? -1 : (int) (latencyMs + (renderFps > 0 ? 1000 / renderFps : 0));
-    String loss = lossPct < 0 ? "--" : lossPct + "%";
+    String loss = lossPct < 0 ? "0%" : lossPct + "%";
     String text = "视频源: " + source
-      + "\n网络直连: " + (isDirect ? "是" : "否(ADB隧道)")
+      + "\n网络直连: " + (isDirect ? "直连" : "中继(ADB隧道)")
       + "\n视频解码方式: " + decodeMethod
       + "\n网速: " + speed
       + "\n总延迟: " + (total < 0 ? "--" : total + "ms")
