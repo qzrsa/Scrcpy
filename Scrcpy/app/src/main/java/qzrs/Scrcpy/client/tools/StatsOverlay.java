@@ -36,17 +36,22 @@ public class StatsOverlay {
   private int lastLossPct = -1;          // 丢包率（基于采集vs接收帧率估算）
 
   // 网络质量阈值与配色
-  private static final long RTT_GREEN_MS = 80;
-  private static final long RTT_ORANGE_MS = 200;
-  private static final int LOSS_GREEN_PCT = 5;
-  private static final int LOSS_ORANGE_PCT = 15;
+  private static final long RTT_GREEN_MS = 80;    // 低延迟：绿
+  private static final long RTT_RED_MS = 200;     // 中等=黄，高于此=红
+  private static final long RTT_JITTER_MS = 40;   // 抖动阈值，超则降级一级
+  private static final int LOSS_YELLOW_PCT = 5;   // 丢包达到此值绿降黄
+  private static final int LOSS_RED_PCT = 15;     // 丢包达到此值直接红
   private static final int COLOR_GREEN = 0xFF4CAF50;
-  private static final int COLOR_ORANGE = 0xFFFF9800;
+  private static final int COLOR_YELLOW = 0xFFFFEB3B;
   private static final int COLOR_RED = 0xFFF44336;
   private int lastQualityColor = 0;
 
   private MyInterface.MyFunctionInt onQualityListener;
   private View anchorView; // 锚点 View（WIFI 按钮），浮层会定位在其附近
+
+  // 抖动（平滑估计），用于识别"有波动"的网络
+  private long lastRtt = -1;
+  private long jitterMs = 0;
 
   private long lastUpdateTime = System.currentTimeMillis();
 
@@ -162,6 +167,12 @@ public class StatsOverlay {
   /** keepAlive RTT 测量结果回调，ms 为往返延迟毫秒数 */
   public void onLatency(long ms) {
     latencyMs = ms;
+    // 指数平滑估计抖动（相邻 RTT 差值），用于识别"有波动"
+    if (ms > 0 && lastRtt > 0) {
+      long diff = Math.abs(ms - lastRtt);
+      jitterMs = (long) (jitterMs * 0.7 + diff * 0.3);
+    }
+    if (ms > 0) lastRtt = ms;
     updateText();
   }
 
@@ -232,13 +243,25 @@ public class StatsOverlay {
     });
   }
 
-  /** 根据 RTT 与丢包率推导网络质量配色 */
+  /** 根据 RTT / 抖动 / 丢包率推导网络质量配色（绿=低延迟且稳，黄=中等或波动，红=高延迟/高丢包） */
   private void updateQuality(long rtt, int lossPct) {
     int color;
-    if (rtt < 0) color = 0xFFFFFFFF; // 未知：白
-    else if (rtt <= RTT_GREEN_MS && (lossPct < 0 || lossPct < LOSS_GREEN_PCT)) color = COLOR_GREEN;
-    else if (rtt <= RTT_ORANGE_MS && (lossPct < 0 || lossPct < LOSS_ORANGE_PCT)) color = COLOR_ORANGE;
-    else color = COLOR_RED;
+    if (rtt < 0) {
+      color = 0xFFFFFFFF; // 未知：白
+    } else {
+      // 基础按 RTT 分级
+      if (rtt <= RTT_GREEN_MS) color = COLOR_GREEN;
+      else if (rtt <= RTT_RED_MS) color = COLOR_YELLOW;
+      else color = COLOR_RED;
+      // 波动惩罚：抖动大则降级一级（绿→黄，黄→红）
+      if (jitterMs > RTT_JITTER_MS) {
+        if (color == COLOR_GREEN) color = COLOR_YELLOW;
+        else if (color == COLOR_YELLOW) color = COLOR_RED;
+      }
+      // 丢包惩罚
+      if (lossPct >= LOSS_RED_PCT) color = COLOR_RED;
+      else if (color == COLOR_GREEN && lossPct >= LOSS_YELLOW_PCT) color = COLOR_YELLOW;
+    }
     if (color != lastQualityColor) {
       lastQualityColor = color;
       final int c = color;
