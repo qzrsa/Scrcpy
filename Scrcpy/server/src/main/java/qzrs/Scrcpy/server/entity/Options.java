@@ -50,7 +50,8 @@ public final class Options {
           supportOpus = Integer.parseInt(value) == 1;
           break;
         case "startApp":
-          startApp = value;
+          // 仅允许合法 Android 包名，杜绝 monkey -p / am stack list 中的 shell 与正则注入；空串表示不启动应用
+          if (value.isEmpty() || value.matches("[a-zA-Z0-9._]+")) startApp = value;
           break;
       }
     }

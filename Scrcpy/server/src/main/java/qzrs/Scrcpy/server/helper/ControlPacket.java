@@ -12,26 +12,44 @@ import qzrs.Scrcpy.server.entity.Device;
 
 public final class ControlPacket {
 
+  // 复用缓冲：避免每帧 ByteBuffer.allocate 造成 GC 抖动。
+  // 视频帧只由视频线程写入、音频帧只由音频线程写入，各自独立，无需同步。
+  private static byte[] videoSendBuf = new byte[0];
+  private static ByteBuffer videoSendBB = ByteBuffer.wrap(videoSendBuf);
+  private static byte[] audioSendBuf = new byte[0];
+  private static ByteBuffer audioSendBB = ByteBuffer.wrap(audioSendBuf);
+
   public static void sendVideoEvent(long pts, ByteBuffer data) throws IOException {
-    int size = data.remaining() + 8;
+    int dataLen = data.remaining();
+    int size = dataLen + 8;
     if (size < 8) return;
-    ByteBuffer byteBuffer = ByteBuffer.allocate(4 + size);
-    byteBuffer.putInt(size);
-    byteBuffer.putLong(pts);
-    byteBuffer.put(data);
-    byteBuffer.flip();
-    Server.writeVideo(byteBuffer);
+    int total = 4 + size;
+    if (videoSendBuf.length < total) {
+      videoSendBuf = new byte[total];
+      videoSendBB = ByteBuffer.wrap(videoSendBuf);
+    }
+    videoSendBB.clear();
+    videoSendBB.putInt(size);
+    videoSendBB.putLong(pts);
+    videoSendBB.put(data);
+    videoSendBB.flip();
+    Server.writeVideo(videoSendBB);
   }
 
   public static void sendAudioEvent(ByteBuffer data) throws IOException {
     int size = data.remaining();
     if (size < 0) return;
-    ByteBuffer byteBuffer = ByteBuffer.allocate(5 + size);
-    byteBuffer.put((byte) 1);
-    byteBuffer.putInt(size);
-    byteBuffer.put(data);
-    byteBuffer.flip();
-    Server.writeMain(byteBuffer);
+    int total = 5 + size;
+    if (audioSendBuf.length < total) {
+      audioSendBuf = new byte[total];
+      audioSendBB = ByteBuffer.wrap(audioSendBuf);
+    }
+    audioSendBB.clear();
+    audioSendBB.put((byte) 1);
+    audioSendBB.putInt(size);
+    audioSendBB.put(data);
+    audioSendBB.flip();
+    Server.writeMain(audioSendBB);
   }
 
   public static void sendClipboardEvent(String newClipboardText) {

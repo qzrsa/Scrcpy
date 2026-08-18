@@ -182,9 +182,7 @@ public final class Server {
           case 4:
             lastKeepAliveTime = System.currentTimeMillis();
             // 收到心跳包，原样返回，用于客户端计算RTT往返延迟
-            mainOutputStream.write(new byte[]{4});
-            // 强制flush，立刻发送，避免TCP缓冲
-            mainOutputStream.flush();
+            writeKeepAlive();
             break;
           case 5:
             Device.changeResolution(mainInputStream.readFloat());
@@ -209,11 +207,18 @@ public final class Server {
   }
 
   public synchronized static void writeMain(ByteBuffer byteBuffer) throws IOException {
-    mainOutputStream.write(byteBuffer.array());
+    // 只写有效区间：复用缓冲时底层数组可能大于实际内容，写整数组会带出上一帧残留字节
+    mainOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(), byteBuffer.remaining());
   }
 
   public static void writeVideo(ByteBuffer byteBuffer) throws IOException {
-    videoOutputStream.write(byteBuffer.array());
+    videoOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(), byteBuffer.remaining());
+  }
+
+  // 心跳回包走与 writeMain 相同的锁，避免与音频/剪贴板帧在主socket上交错写入导致协议错乱
+  public synchronized static void writeKeepAlive() throws IOException {
+    mainOutputStream.write(new byte[]{4});
+    mainOutputStream.flush();
   }
 
   public static void errorClose(Exception e) {
