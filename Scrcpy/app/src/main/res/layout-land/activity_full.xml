@@ -221,6 +221,16 @@
         android:padding="8dp"
         android:src="@drawable/un_auto"
         android:tint="@color/onCardBackground" />
+
+      <ImageView
+        android:id="@+id/button_fps"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:focusable="false"
+        android:padding="8dp"
+        android:src="@drawable/fps"
+        android:tint="@color/onCardBackground" />
     </LinearLayout>
   </LinearLayout>
 

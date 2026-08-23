@@ -27,6 +27,15 @@ public final class Setting {
     editor.apply();
   }
 
+  public boolean getShowFps() {
+    return sharedPreferences.getBoolean("showFps", true);
+  }
+
+  public void setShowFps(boolean value) {
+    editor.putBoolean("showFps", value);
+    editor.apply();
+  }
+
   public String getLocalUUID() {
     if (!sharedPreferences.contains("UUID")) {
       editor.putString("UUID", UUID.randomUUID().toString());

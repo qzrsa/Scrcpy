@@ -34,6 +34,7 @@ public class FullActivity extends Activity implements SensorEventListener {
   private ActivityFullBinding activityFullBinding;
   private StatsOverlay statsOverlay;
   private boolean autoRotate;
+  private boolean showFps = true;
   private boolean light = true;
 
   @Override
@@ -58,6 +59,13 @@ public class FullActivity extends Activity implements SensorEventListener {
     setNavBarHide(device.showNavBarOnConnect);
     autoRotate = AppData.setting.getAutoRotate();
     activityFullBinding.buttonAutoRotate.setImageResource(autoRotate ? R.drawable.auto : R.drawable.un_auto);
+    // FPS 浮层：默认开启，左上角显示
+    showFps = AppData.setting.getShowFps();
+    activityFullBinding.buttonFps.setImageResource(showFps ? R.drawable.fps : R.drawable.fps_off);
+    if (statsOverlay != null) {
+      if (showFps && !statsOverlay.isFpsShowing()) statsOverlay.showFps();
+      else if (!showFps && statsOverlay.isFpsShowing()) statsOverlay.hideFps();
+    }
     if (!Objects.equals(device.startApp, "")) {
       activityFullBinding.buttonHome.setVisibility(View.GONE);
       activityFullBinding.buttonSwitch.setVisibility(View.GONE);
@@ -163,6 +171,15 @@ public class FullActivity extends Activity implements SensorEventListener {
       autoRotate = !autoRotate;
       AppData.setting.setAutoRotate(autoRotate);
       activityFullBinding.buttonAutoRotate.setImageResource(autoRotate ? R.drawable.auto : R.drawable.un_auto);
+    });
+    // FPS 开关（位于"更多"弹出面板内）：控制左上角 FPS 浮层显隐
+    activityFullBinding.buttonFps.setOnClickListener(v -> {
+      if (statsOverlay == null) return;
+      showFps = !showFps;
+      AppData.setting.setShowFps(showFps);
+      activityFullBinding.buttonFps.setImageResource(showFps ? R.drawable.fps : R.drawable.fps_off);
+      if (showFps) statsOverlay.showFps();
+      else statsOverlay.hideFps();
     });
   }
 

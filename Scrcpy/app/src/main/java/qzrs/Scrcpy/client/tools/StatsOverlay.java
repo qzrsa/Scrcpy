@@ -49,6 +49,12 @@ public class StatsOverlay {
   private MyInterface.MyFunctionInt onQualityListener;
   private View anchorView; // 锚点 View（WIFI 按钮），浮层会定位在其附近
 
+  // 独立的 FPS 小浮层（左上角默认显示，由"更多"面板的 FPS 图标控制显隐）
+  private final TextView fpsView;
+  private final WindowManager.LayoutParams fpsParams;
+  private boolean isFpsAdded = false;
+  private int fpsValue = 0;
+
   // 抖动（平滑估计），用于识别"有波动"的网络
   private long lastRtt = -1;
   private long jitterMs = 0;
@@ -78,6 +84,30 @@ public class StatsOverlay {
     params.gravity = Gravity.TOP | Gravity.START;
     params.x = 16;
     params.y = 80;
+
+    // 独立的 FPS 小浮层
+    fpsView = new TextView(AppData.applicationContext);
+    fpsView.setTextColor(Color.WHITE);
+    fpsView.setTextSize(13f);
+    fpsView.setShadowLayer(3f, 1f, 1f, Color.BLACK);
+    fpsView.setPadding(10, 4, 10, 4);
+    fpsView.setBackgroundColor(0x66000000);
+    fpsView.setText("FPS: --");
+
+    fpsParams = new WindowManager.LayoutParams(
+      WindowManager.LayoutParams.WRAP_CONTENT,
+      WindowManager.LayoutParams.WRAP_CONTENT,
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        : WindowManager.LayoutParams.TYPE_PHONE,
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+      PixelFormat.TRANSLUCENT
+    );
+    fpsParams.gravity = Gravity.TOP | Gravity.START;
+    fpsParams.x = 16;
+    fpsParams.y = 80;
   }
 
   public void show() {
@@ -148,6 +178,31 @@ public class StatsOverlay {
     return isAdded;
   }
 
+  /** 显示左上角 FPS 小浮层 */
+  public void showFps() {
+    AppData.uiHandler.post(() -> {
+      if (!isFpsAdded) {
+        AppData.windowManager.addView(fpsView, fpsParams);
+        isFpsAdded = true;
+      }
+    });
+  }
+
+  /** 隐藏左上角 FPS 小浮层 */
+  public void hideFps() {
+    AppData.uiHandler.post(() -> {
+      if (isFpsAdded) {
+        AppData.windowManager.removeView(fpsView);
+        isFpsAdded = false;
+      }
+    });
+  }
+
+  /** FPS 小浮层当前是否已显示 */
+  public boolean isFpsShowing() {
+    return isFpsAdded;
+  }
+
   /** 每解码一帧视频时调用，bytes 为本帧数据字节数 */
   public void onVideoFrame(int bytes) {
     frameCount++;
@@ -185,6 +240,8 @@ public class StatsOverlay {
   /** 客户端解码输出帧率（渲染帧率） */
   public void onRenderFps(int fps) {
     renderFps = fps;
+    fpsValue = fps;
+    AppData.uiHandler.post(() -> fpsView.setText("FPS: " + (fps > 0 ? fps : "--")));
     updateText();
   }
 

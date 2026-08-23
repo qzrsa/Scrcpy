@@ -104,7 +104,10 @@ public class ClientPlayer {
   public void close() {
     if (isClose) return;
     isClose = true;
-    if (statsOverlay != null) statsOverlay.hide();
+    if (statsOverlay != null) {
+      statsOverlay.hide();
+      statsOverlay.hideFps();
+    }
     mainStreamInThread.interrupt();
     videoStreamInThread.interrupt();
     playHandlerThread.interrupt();
