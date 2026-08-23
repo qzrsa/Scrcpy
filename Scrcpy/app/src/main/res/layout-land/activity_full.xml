@@ -219,7 +219,7 @@
         android:layout_weight="1"
         android:focusable="false"
         android:padding="8dp"
-        android:src="@drawable/un_auto"
+        android:src="@drawable/auto"
         android:tint="@color/onCardBackground" />
 
       <ImageView
