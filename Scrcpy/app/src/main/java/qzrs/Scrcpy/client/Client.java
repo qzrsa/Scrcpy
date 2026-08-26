@@ -94,8 +94,9 @@ public class Client {
     if (!isTempDevice) AppData.dbHelper.update(device);
     allClient.remove(device.uuid);
     // 运行断开时操作
-    if (!isTempDevice && device.lockOnClose) clientController.handleAction("buttonLock", null, 0);
-    else if (!isTempDevice && device.lightOnClose) clientController.handleAction("buttonLight", null, 0);
+    // 断开时不再自动熄屏锁屏（用户要求注释掉熄屏）
+    // if (!isTempDevice && device.lockOnClose) clientController.handleAction("buttonLock", null, 0);
+    if (!isTempDevice && device.lightOnClose) clientController.handleAction("buttonLight", null, 0);
     // 关闭组件
     if (clientPlayer != null) clientPlayer.close();
     if (clientController != null) clientController.close();
