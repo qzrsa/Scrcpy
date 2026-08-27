@@ -111,6 +111,14 @@ public class ClientController implements TextureView.SurfaceTextureListener {
         case "buttonSwitch":
           clientStream.writeToMain(ControlPacket.createKeyEvent(187, 0));
           break;
+        case "buttonVolumeUp":
+          // 被控端音量+
+          clientStream.writeToMain(ControlPacket.createKeyEvent(24, 0));
+          break;
+        case "buttonVolumeDown":
+          // 被控端音量-
+          clientStream.writeToMain(ControlPacket.createKeyEvent(25, 0));
+          break;
         case "buttonRotate":
           clientStream.writeToMain(ControlPacket.createRotateEvent());
           break;

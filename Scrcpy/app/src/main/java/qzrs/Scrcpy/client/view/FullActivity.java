@@ -181,6 +181,9 @@ public class FullActivity extends Activity implements SensorEventListener {
       if (showFps) statsOverlay.showFps();
       else statsOverlay.hideFps();
     });
+    // 被控端音量调节（不关闭面板，方便连续调音量）
+    activityFullBinding.buttonVolumeUp.setOnClickListener(v -> clientController.handleAction("buttonVolumeUp", null, 0));
+    activityFullBinding.buttonVolumeDown.setOnClickListener(v -> clientController.handleAction("buttonVolumeDown", null, 0));
   }
 
   // 导航栏隐藏
