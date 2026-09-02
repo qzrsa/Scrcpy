@@ -272,8 +272,19 @@ public class ClientController implements TextureView.SurfaceTextureListener {
     int height = byteBuffer.getInt();
     if (width <= 100 || height <= 100) return;
     this.videoSize = new Pair<>(width, height);
+    // 被控端分辨率变化（如进游戏强制横屏）时，同步切换本端横竖屏
+    FullActivity full = fullView;
+    if (full != null) AppData.uiHandler.post(() -> full.applyDeviceOrientation(width, height));
     updateSite(null);
     AppData.uiHandler.post(this::reCalculateTextureViewSize);
+  }
+
+  public Pair<Integer, Integer> getVideoSize() {
+    return videoSize;
+  }
+
+  public void setVideoSize(Pair<Integer, Integer> videoSize) {
+    this.videoSize = videoSize;
   }
 
   private void updateSite(ByteBuffer byteBuffer) {

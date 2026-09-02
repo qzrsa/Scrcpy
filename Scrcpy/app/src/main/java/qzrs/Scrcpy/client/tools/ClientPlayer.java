@@ -86,6 +86,7 @@ public class ClientPlayer {
     try {
       boolean useH265 = clientStream.readByteFromVideo() == 1;
       Pair<Integer, Integer> videoSize = new Pair<>(clientStream.readIntFromVideo(), clientStream.readIntFromVideo());
+      clientController.setVideoSize(videoSize); // 同步初始分辨率，供全屏页进入时判断横竖屏
       Surface surface = new Surface(clientController.getTextureView().getSurfaceTexture());
       ByteBuffer csd0 = clientStream.readFrameFromVideo();
       ByteBuffer csd1 = useH265 ? null : clientStream.readFrameFromVideo();
