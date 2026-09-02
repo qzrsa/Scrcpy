@@ -58,21 +58,33 @@ jobs:
 
       - name: Update Android Version
         id: version
+        env:
+          INPUT_CODE: ${{ inputs.app_version_code }}
+          INPUT_NAME: ${{ inputs.app_version_name }}
         run: |
-          INPUT_CODE="${{ inputs.app_version_code }}"
+          # 占位符没替换就中止，避免把 "2.0.X" 原样打进 APK
+          if [ -z "$INPUT_NAME" ] || [ "$INPUT_NAME" = "2.0.X" ]; then
+            echo "::error::app_version_name 仍是占位符，请填写真实版本号（如 2.0.7）"
+            exit 1
+          fi
           if [ "$INPUT_CODE" = "0" ] || [ -z "$INPUT_CODE" ]; then
-            CURRENT_CODE=$(grep -oP 'versionCode\\s+\\K\\d+' Scrcpy/app/build.gradle | head -1)
+            CURRENT_CODE=$(grep -oP 'versionCode\s+\K\d+' Scrcpy/app/build.gradle | head -1)
+            # 解析失败必须中止，否则 $((空 + 1)) 会把版本静默写成 1
+            if [ -z "$CURRENT_CODE" ]; then
+              echo "::error::无法从 Scrcpy/app/build.gradle 解析 versionCode"
+              exit 1
+            fi
             NEW_CODE=$((CURRENT_CODE + 1))
           else
             NEW_CODE="$INPUT_CODE"
           fi
 
           sed -i "s/versionCode [0-9]\\+/versionCode ${NEW_CODE}/" Scrcpy/app/build.gradle
-          sed -i 's/versionName ".*"/versionName "${{ inputs.app_version_name }}"/' Scrcpy/app/build.gradle
+          sed -i "s/versionName \".*\"/versionName \"${INPUT_NAME}\"/" Scrcpy/app/build.gradle
 
           echo "new_version_code=${NEW_CODE}" >> $GITHUB_OUTPUT
           echo "New versionCode=${NEW_CODE}"
-          echo "New versionName=${{ inputs.app_version_name }}"
+          echo "New versionName=${INPUT_NAME}"
 
       - name: Grant execute permission for gradlew
         run: chmod +x Scrcpy/gradlew
