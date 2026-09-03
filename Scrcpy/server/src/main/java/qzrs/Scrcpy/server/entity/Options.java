@@ -14,6 +14,8 @@ public final class Options {
   public static int maxFps = 60;
   public static boolean keepAwake = true;
   public static boolean supportH265 = true;
+  public static boolean supportVp8 = false;
+  public static boolean supportVp9 = false;
   public static boolean supportOpus = true;
   public static String startApp = "";
 
@@ -50,6 +52,12 @@ public final class Options {
           break;
         case "supportH265":
           supportH265 = Integer.parseInt(value) == 1;
+          break;
+        case "supportVp8":
+          supportVp8 = Integer.parseInt(value) == 1;
+          break;
+        case "supportVp9":
+          supportVp9 = Integer.parseInt(value) == 1;
           break;
         case "supportOpus":
           supportOpus = Integer.parseInt(value) == 1;

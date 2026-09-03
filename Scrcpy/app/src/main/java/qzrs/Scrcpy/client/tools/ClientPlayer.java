@@ -84,13 +84,13 @@ public class ClientPlayer {
   private void videoStreamIn() {
     VideoDecode videoDecode = null;
     try {
-      boolean useH265 = clientStream.readByteFromVideo() == 1;
+      byte videoCodec = clientStream.readByteFromVideo();
       Pair<Integer, Integer> videoSize = new Pair<>(clientStream.readIntFromVideo(), clientStream.readIntFromVideo());
       clientController.setVideoSize(videoSize); // 同步初始分辨率，供全屏页进入时判断横竖屏
       Surface surface = new Surface(clientController.getTextureView().getSurfaceTexture());
       ByteBuffer csd0 = clientStream.readFrameFromVideo();
-      ByteBuffer csd1 = useH265 ? null : clientStream.readFrameFromVideo();
-      videoDecode = new VideoDecode(videoSize, surface, csd0, csd1, playHandler, statsOverlay);
+      ByteBuffer csd1 = videoCodec == 0 ? clientStream.readFrameFromVideo() : null;
+      videoDecode = new VideoDecode(videoCodec, videoSize, surface, csd0, csd1, playHandler, statsOverlay);
       while (!Thread.interrupted()) {
         ByteBuffer frame = clientStream.readFrameFromVideo();
         if (statsOverlay != null) statsOverlay.onVideoFrame(frame.remaining());

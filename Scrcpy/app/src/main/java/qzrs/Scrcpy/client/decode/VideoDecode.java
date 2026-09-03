@@ -56,9 +56,9 @@ public class VideoDecode {
     }
   };
 
-  public VideoDecode(Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler, StatsOverlay statsOverlay) throws IOException, InterruptedException {
+  public VideoDecode(byte videoCodec, Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler, StatsOverlay statsOverlay) throws IOException, InterruptedException {
     this.statsOverlay = statsOverlay;
-    setVideoDecodec(videoSize, surface, csd0, csd1, playHandler);
+    setVideoDecodec(videoCodec, videoSize, surface, csd0, csd1, playHandler);
   }
 
   public void release() {
@@ -83,16 +83,35 @@ public class VideoDecode {
   }
 
   // 创建Codec
-  private void setVideoDecodec(Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler) throws IOException, InterruptedException {
-    boolean useH265 = csd1 == null;
+  private void setVideoDecodec(byte videoCodec, Pair<Integer, Integer> videoSize, Surface surface, ByteBuffer csd0, ByteBuffer csd1, Handler playHandler) throws IOException, InterruptedException {
+    boolean useH264 = videoCodec == 0;
+    String codecMime;
+    String codecLabel;
+    switch (videoCodec) {
+      case 1:
+        codecMime = MediaFormat.MIMETYPE_VIDEO_HEVC;
+        codecLabel = "H265";
+        break;
+      case 2:
+        codecMime = MediaFormat.MIMETYPE_VIDEO_VP8;
+        codecLabel = "VP8";
+        break;
+      case 3:
+        codecMime = MediaFormat.MIMETYPE_VIDEO_VP9;
+        codecLabel = "VP9";
+        break;
+      default:
+        codecMime = MediaFormat.MIMETYPE_VIDEO_AVC;
+        codecLabel = "H264";
+        break;
+    }
     if (statsOverlay != null) {
-      statsOverlay.setSource(videoSize.first + "x" + videoSize.second + "/" + (useH265 ? "H265" : "H264"));
+      statsOverlay.setSource(videoSize.first + "x" + videoSize.second + "/" + codecLabel);
       statsOverlay.setDecodeMethod("硬解");
     }
     // 创建解码器
-    String codecMime = useH265 ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC;
     try {
-      String codecName = DecodecTools.getVideoDecoder(useH265);
+      String codecName = DecodecTools.getVideoDecoder(codecMime);
       if (Objects.equals(codecName, "")) decodec = MediaCodec.createDecoderByType(codecMime);
       else decodec = MediaCodec.createByCodecName(codecName);
     } catch (Exception ignord) {
@@ -102,7 +121,7 @@ public class VideoDecode {
     // 获取视频标识头
     csd0.position(8);
     decodecFormat.setByteBuffer("csd-0", csd0);
-    if (!useH265) {
+    if (useH264) {
       csd1.position(8);
       decodecFormat.setByteBuffer("csd-1", csd1);
     }
@@ -117,7 +136,7 @@ public class VideoDecode {
     // 解析首帧，解决开始黑屏问题
     csd0.position(0);
     decodeIn(csd0);
-    if (!useH265) {
+    if (useH264) {
       csd1.position(0);
       decodeIn(csd1);
     }

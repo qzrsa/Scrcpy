@@ -10,8 +10,8 @@ android {
     minSdk 21
     targetSdk 36
     applicationId 'qzrs.Scrcpy.server'
-    versionCode 30304
-    versionName '3.3.4'
+    versionCode 40100
+    versionName '4.1.0'
   }
 
   buildTypes {

@@ -32,6 +32,8 @@ public class ClientStream {
   private Thread connectThread = null;
   private static final String serverName = "/data/local/tmp/scrcpy_server_" + BuildConfig.VERSION_CODE + ".jar";
   private static final boolean supportH265 = DecodecTools.isSupportH265();
+  private static final boolean supportVp8 = DecodecTools.isSupportVp8();
+  private static final boolean supportVp9 = DecodecTools.isSupportVp9();
   private static final boolean supportOpus = DecodecTools.isSupportOpus();
 
   private static final int timeoutDelay = 1000 * 15;
@@ -112,6 +114,8 @@ public class ClientStream {
       + " autoBitrate=" + (device.autoBitrate ? 1 : 0)
       + " keepAwake=" + (device.keepWakeOnRunning ? 1 : 0)
       + " supportH265=" + ((device.useH265 && supportH265) ? 1 : 0)
+      + " supportVp8=" + (supportVp8 ? 1 : 0)
+      + " supportVp9=" + (supportVp9 ? 1 : 0)
       + " supportOpus=" + (supportOpus ? 1 : 0)
       + " startApp=" + device.startApp + " \n").getBytes()));
   }

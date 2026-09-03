@@ -26,7 +26,13 @@ public final class VideoEncode {
   private static MediaCodec encedec;
   private static MediaFormat encodecFormat;
   public static boolean isHasChangeConfig = false;
-  private static boolean useH265;
+  // Wire values are deliberately stable: 0/1 retain compatibility with the
+  // previous H.264/H.265 header, while 2/3 add the scrcpy 4.1 VP codecs.
+  public static final byte CODEC_H264 = 0;
+  public static final byte CODEC_H265 = 1;
+  public static final byte CODEC_VP8 = 2;
+  public static final byte CODEC_VP9 = 3;
+  private static byte videoCodec;
 
   private static IBinder display;
 
@@ -37,23 +43,20 @@ public final class VideoEncode {
   public static volatile long encodedFrameCount = 0;
 
   public static void init() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException, IOException, ErrnoException {
-    useH265 = Options.supportH265 && EncodecTools.isSupportH265();
+    createEncodecFormat();
     ByteBuffer byteBuffer = ByteBuffer.allocate(9);
-    byteBuffer.put((byte) (useH265 ? 1 : 0));
+    byteBuffer.put(videoCodec);
     byteBuffer.putInt(Device.videoSize.first);
     byteBuffer.putInt(Device.videoSize.second);
     byteBuffer.flip();
     Server.writeVideo(byteBuffer);
     // 创建显示器
     display = SurfaceControl.createDisplay("scrcpy", Build.VERSION.SDK_INT < Build.VERSION_CODES.R || (Build.VERSION.SDK_INT == Build.VERSION_CODES.R && !"S".equals(Build.VERSION.CODENAME)));
-    // 创建Codec
-    createEncodecFormat();
     startEncode();
   }
 
   private static void createEncodecFormat() throws IOException {
-    String codecMime = useH265 ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC;
-    encedec = MediaCodec.createEncoderByType(codecMime);
+    String codecMime = selectAndCreateEncoder();
     encodecFormat = new MediaFormat();
     encodecFormat.setString(MediaFormat.KEY_MIME, codecMime);
     encodecFormat.setInteger(MediaFormat.KEY_BIT_RATE, Options.maxVideoBit);
@@ -64,6 +67,57 @@ public final class VideoEncode {
     encodecFormat.setFloat("max-fps-to-encoder", Options.maxFps);
     encodecFormat.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 50_000);
     encodecFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+  }
+
+  /**
+   * Keep H.264/H.265 as the preferred path, but use VP9/VP8 when the device
+   * lacks an AVC/HEVC encoder and the receiving device advertised a decoder.
+   * This mirrors the codec availability improvement introduced by scrcpy 4.1.
+   */
+  private static String selectAndCreateEncoder() throws IOException {
+    byte[] candidates = new byte[] {CODEC_H265, CODEC_H264, CODEC_VP9, CODEC_VP8};
+    IOException lastError = null;
+    for (byte candidate : candidates) {
+      if (!isCandidateAvailable(candidate)) continue;
+      try {
+        String mime = mimeForCodec(candidate);
+        encedec = MediaCodec.createEncoderByType(mime);
+        videoCodec = candidate;
+        return mime;
+      } catch (IOException e) {
+        lastError = e;
+      }
+    }
+    if (lastError != null) throw lastError;
+    throw new IOException("No mutually supported hardware video encoder");
+  }
+
+  private static boolean isCandidateAvailable(byte codec) {
+    switch (codec) {
+      case CODEC_H265:
+        return Options.supportH265 && EncodecTools.isSupportH265();
+      case CODEC_H264:
+        return EncodecTools.isSupportH264();
+      case CODEC_VP9:
+        return Options.supportVp9 && EncodecTools.isSupportVp9();
+      case CODEC_VP8:
+        return Options.supportVp8 && EncodecTools.isSupportVp8();
+      default:
+        return false;
+    }
+  }
+
+  private static String mimeForCodec(byte codec) {
+    switch (codec) {
+      case CODEC_H265:
+        return MediaFormat.MIMETYPE_VIDEO_HEVC;
+      case CODEC_VP8:
+        return MediaFormat.MIMETYPE_VIDEO_VP8;
+      case CODEC_VP9:
+        return MediaFormat.MIMETYPE_VIDEO_VP9;
+      default:
+        return MediaFormat.MIMETYPE_VIDEO_AVC;
+    }
   }
 
   // 初始化编码器
