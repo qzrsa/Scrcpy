@@ -5,6 +5,7 @@ package qzrs.Scrcpy.server.entity;
 
 import android.content.IOnPrimaryClipChangedListener;
 import android.hardware.display.VirtualDisplay;
+import android.media.MediaCodecInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -103,6 +104,35 @@ public final class Device {
     minor = minor + 8 & ~15;
     major = major + 8 & ~15;
     videoSize = isPortrait ? new Pair<>(minor, major) : new Pair<>(major, minor);
+  }
+
+  /**
+   * Apply the encoder's real size limits only after an initial configuration
+   * failed. Some devices report overly restrictive capabilities, so applying
+   * them eagerly causes avoidable capture failures (the scrcpy 4.1 strategy).
+   */
+  public static boolean applyVideoEncoderConstraints(MediaCodecInfo.VideoCapabilities caps, int minimumAlignment) {
+    if (caps == null || videoSize == null) return false;
+    int alignment = Math.max(minimumAlignment, Math.max(caps.getWidthAlignment(), caps.getHeightAlignment()));
+    int width = alignDown(videoSize.first, alignment);
+    int height = alignDown(videoSize.second, alignment);
+    if (width <= 0 || height <= 0) return false;
+
+    // Keep aspect ratio and progressively downsize until the codec accepts it.
+    while (!caps.isSizeSupported(width, height)) {
+      int nextWidth = alignDown((int) (width * 0.9f), alignment);
+      int nextHeight = alignDown((int) (height * 0.9f), alignment);
+      if (nextWidth <= 0 || nextHeight <= 0 || (nextWidth == width && nextHeight == height)) return false;
+      width = nextWidth;
+      height = nextHeight;
+    }
+    if (width == videoSize.first && height == videoSize.second) return false;
+    videoSize = new Pair<>(width, height);
+    return true;
+  }
+
+  private static int alignDown(int value, int alignment) {
+    return value / alignment * alignment;
   }
 
   // 修改分辨率

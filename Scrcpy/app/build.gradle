@@ -86,6 +86,19 @@ project.afterEvaluate {
   }
 }
 
+// The server APK is embedded as a raw resource. Configure this after every
+// project has been evaluated so resource merging cannot race the copy task.
+gradle.projectsEvaluated {
+  def serverCopyTask = project(':server').tasks.named('copyRelease')
+  tasks.configureEach { task ->
+    // AGP reads app/src/main/res from several task types (not just resource
+    // merging), so every non-clean app task must observe this producer.
+    if (task.name != 'clean') {
+      task.dependsOn(serverCopyTask)
+    }
+  }
+}
+
 dependencies {
   implementation 'androidx.documentfile:documentfile:1.0.1'
 }

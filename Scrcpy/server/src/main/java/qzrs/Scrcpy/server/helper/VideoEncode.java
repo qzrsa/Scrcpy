@@ -66,6 +66,10 @@ public final class VideoEncode {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) encodecFormat.setInteger(MediaFormat.KEY_INTRA_REFRESH_PERIOD, Options.maxFps * 3);
     encodecFormat.setFloat("max-fps-to-encoder", Options.maxFps);
     encodecFormat.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 50_000);
+    // scrcpy 4.1: ask the framework for real-time scheduling and the shortest
+    // practical encoder queue, where those public API keys are available.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) encodecFormat.setInteger(MediaFormat.KEY_PRIORITY, 0);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) encodecFormat.setInteger(MediaFormat.KEY_LATENCY, 1);
     encodecFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
   }
 
@@ -127,7 +131,19 @@ public final class VideoEncode {
     ControlPacket.sendVideoSizeEvent();
     encodecFormat.setInteger(MediaFormat.KEY_WIDTH, Device.videoSize.first);
     encodecFormat.setInteger(MediaFormat.KEY_HEIGHT, Device.videoSize.second);
-    encedec.configure(encodecFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+    try {
+      encedec.configure(encodecFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+    } catch (IllegalArgumentException | MediaCodec.CodecException firstFailure) {
+      // Do not trust declared limits until the encoder has actually rejected a
+      // size. On failure, retry once with the codec's reported constraints.
+      MediaCodecInfo.VideoCapabilities caps = encedec.getCodecInfo()
+        .getCapabilitiesForType(encodecFormat.getString(MediaFormat.KEY_MIME)).getVideoCapabilities();
+      if (!Device.applyVideoEncoderConstraints(caps, 16)) throw firstFailure;
+      encodecFormat.setInteger(MediaFormat.KEY_WIDTH, Device.videoSize.first);
+      encodecFormat.setInteger(MediaFormat.KEY_HEIGHT, Device.videoSize.second);
+      encedec.configure(encodecFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+      ControlPacket.sendVideoSizeEvent();
+    }
     // 绑定Display和Surface
     surface = encedec.createInputSurface();
     setDisplaySurface(display, surface);

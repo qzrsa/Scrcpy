@@ -65,7 +65,11 @@ public class AdbTools {
           int dotIndex = tempFileName.lastIndexOf(".");
           tempFileName = UUID.randomUUID() + (dotIndex == -1 ? "" : tempFileName.substring(dotIndex));
         }
-        adb.pushFile(file, "/sdcard/Download/Scrcpy/" + tempFileName, handleProcess);
+        String remotePath = "/sdcard/Download/Scrcpy/" + tempFileName;
+        adb.pushFile(file, remotePath, handleProcess);
+        // scrcpy 4.1: notify MediaStore after a pushed file so gallery and
+        // file-manager apps can discover it without waiting for a reboot.
+        adb.runAdbCmd("am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file://" + remotePath);
       } catch (Exception ignored) {
         handleProcess.run(-1);
       }
